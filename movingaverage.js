@@ -1,26 +1,27 @@
 // ── MOVING AVERAGE INDICATOR ──
-// Fully dynamic: add/remove MAs, custom period + colour, toggle on/off
+// Fully dynamic: add/remove MAs, custom period + colour + type, toggle on/off
+// Types: SMA (simple), EMA (exponential), WMA (weighted)
 // Depends on: lwChart (chart.js), candles[], fp() (main script)
 
 // ── State ────────────────────────────────────────────────────────────
 let maVisible = true;
 
-// Each MA: { id, period, color, series }
+// Each MA: { id, period, color, type, series }
 let maLines = [
-  { id: 1, period: 7,  color: '#f59e0b' },
-  { id: 2, period: 25, color: '#a78bfa' },
-  { id: 3, period: 99, color: '#38bdf8' },
+  { id: 1, period: 7,  color: '#f59e0b', type: 'EMA' },
+  { id: 2, period: 25, color: '#a78bfa', type: 'EMA' },
+  { id: 3, period: 99, color: '#38bdf8', type: 'SMA' },
 ];
 let _maNextId = 4;
+
+const MA_TYPES = ['SMA', 'EMA', 'WMA'];
 
 // ── Init — called by initChart() in chart.js ─────────────────────────
 function initMAIndicator() {
   if (!lwChart) return;
 
-  // Create series for each default MA
   maLines.forEach(ma => _createSeries(ma));
 
-  // Crosshair → update label bar
   lwChart.subscribeCrosshairMove(param => {
     if (!param || !param.time) return;
     const idx = candles.findIndex(x => Math.floor(x.t / 1000) === param.time);
@@ -38,7 +39,7 @@ function setMAData(candles) {
   const closes = candles.map(c => c.c);
   maLines.forEach(ma => {
     if (!ma.series) return;
-    const vals = _buildMA(closes, ma.period);
+    const vals = _buildMA(closes, ma.period, ma.type);
     const data = [];
     candles.forEach((c, i) => {
       if (vals[i] !== null) data.push({ time: Math.floor(c.t / 1000), value: vals[i] });
@@ -63,11 +64,9 @@ function openMASettings() {
   if (!panel || !btn) return;
   const isOpen = panel.style.display === 'flex';
   if (isOpen) { panel.style.display = 'none'; return; }
-
-  // Position panel below the MA button
   const r = btn.getBoundingClientRect();
-  panel.style.top   = (r.bottom + 6) + 'px';
-  panel.style.left  = Math.max(8, r.right - 260) + 'px';
+  panel.style.top  = (r.bottom + 6) + 'px';
+  panel.style.left = Math.max(8, r.right - 280) + 'px';
   panel.style.display = 'flex';
 }
 
@@ -75,22 +74,20 @@ function openMASettings() {
 function addMALine() {
   const periodEl = document.getElementById('maNewPeriod');
   const colorEl  = document.getElementById('maNewColor');
+  const typeEl   = document.getElementById('maNewType');
   const period   = parseInt(periodEl.value);
   if (!period || period < 1 || period > 500) {
     periodEl.style.borderColor = '#f43f5e';
     setTimeout(() => periodEl.style.borderColor = '', 1000);
     return;
   }
-  if (maLines.length >= 6) {
-    toast('Max 6 MAs allowed', 'error');
-    return;
-  }
-  const ma = { id: _maNextId++, period, color: colorEl.value };
+  if (maLines.length >= 6) { toast('Max 6 MAs allowed', 'error'); return; }
+  const ma = { id: _maNextId++, period, color: colorEl.value, type: typeEl.value };
   maLines.push(ma);
   _createSeries(ma);
   if (candles.length) {
     const closes = candles.map(c => c.c);
-    const vals   = _buildMA(closes, ma.period);
+    const vals   = _buildMA(closes, ma.period, ma.type);
     const data   = [];
     candles.forEach((c, i) => {
       if (vals[i] !== null) data.push({ time: Math.floor(c.t / 1000), value: vals[i] });
@@ -119,16 +116,9 @@ function updateMAPeriod(id, val) {
   const ma = maLines.find(m => m.id === id);
   if (!ma) return;
   ma.period = period;
-  if (candles.length && ma.series) {
-    const closes = candles.map(c => c.c);
-    const vals   = _buildMA(closes, period);
-    const data   = [];
-    candles.forEach((c, i) => {
-      if (vals[i] !== null) data.push({ time: Math.floor(c.t / 1000), value: vals[i] });
-    });
-    ma.series.setData(data);
-  }
+  _refreshSeries(ma);
   _renderLabelBar();
+  _renderSettingsRows();
 }
 
 // ── Update colour live ────────────────────────────────────────────────
@@ -138,6 +128,29 @@ function updateMAColor(id, color) {
   ma.color = color;
   if (ma.series) ma.series.applyOptions({ color });
   _renderLabelBar();
+  _renderSettingsRows();
+}
+
+// ── Update type live ─────────────────────────────────────────────────
+function updateMAType(id, type) {
+  const ma = maLines.find(m => m.id === id);
+  if (!ma) return;
+  ma.type = type;
+  _refreshSeries(ma);
+  _renderLabelBar();
+  _renderSettingsRows(); // ← was missing: pills never re-rendered so type appeared stuck
+}
+
+// ── Internal: recalculate + push data for one MA ──────────────────────
+function _refreshSeries(ma) {
+  if (!candles.length || !ma.series) return;
+  const closes = candles.map(c => c.c);
+  const vals   = _buildMA(closes, ma.period, ma.type);
+  const data   = [];
+  candles.forEach((c, i) => {
+    if (vals[i] !== null) data.push({ time: Math.floor(c.t / 1000), value: vals[i] });
+  });
+  ma.series.setData(data);
 }
 
 // ── Internal: create a Lightweight Charts line series ─────────────────
@@ -153,6 +166,20 @@ function _createSeries(ma) {
   });
 }
 
+// ── Internal: SMA/EMA/WMA pill buttons ───────────────────────────────
+function _typePills(id, current) {
+  return MA_TYPES.map(t => {
+    const on = t === current;
+    const s  = on
+      ? 'background:rgba(0,212,255,0.18);border:1px solid rgba(0,212,255,0.55);color:#00d4ff;'
+      : 'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:#4a5568;';
+    return `<button onclick="event.stopPropagation();updateMAType(${id},'${t}')"
+      style="${s}font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;
+             padding:3px 10px;border-radius:4px;cursor:pointer;letter-spacing:.6px;"
+      >${t}</button>`;
+  }).join('');
+}
+
 // ── Internal: rerender the ma-bar label row ───────────────────────────
 function _renderLabelBar() {
   const bar = document.getElementById('ma-bar');
@@ -160,7 +187,7 @@ function _renderLabelBar() {
   bar.innerHTML = maLines.map(ma =>
     `<div class="ma-seg">
       <div class="ma-line" style="background:${ma.color}"></div>
-      <span style="color:${ma.color};font-size:10px">MA${ma.period}</span>
+      <span style="color:${ma.color};font-size:10px">${ma.type}${ma.period}</span>
       <span id="mav-${ma.id}" style="color:var(--t2);font-size:10px;margin-left:2px"></span>
     </div>`
   ).join('');
@@ -171,19 +198,25 @@ function _renderSettingsRows() {
   const list = document.getElementById('maLinesList');
   if (!list) return;
   list.innerHTML = maLines.map(ma => `
-    <div class="ma-row" style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
-      <input type="color" value="${ma.color}" onchange="updateMAColor(${ma.id},this.value)"
-        style="width:22px;height:22px;border:none;border-radius:4px;cursor:pointer;padding:0;background:none;flex-shrink:0">
-      <span style="font-size:10px;color:var(--t3);width:20px;flex-shrink:0">Per</span>
-      <input type="number" value="${ma.period}" min="1" max="500"
-        onchange="updateMAPeriod(${ma.id},this.value)"
-        style="width:52px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
-               border-radius:4px;color:var(--t1);font-family:'IBM Plex Mono',monospace;font-size:11px;
-               padding:3px 6px;outline:none">
-      <span style="font-size:10px;color:${ma.color};flex:1">MA${ma.period}</span>
-      <button onclick="removeMALine(${ma.id})"
-        style="background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.3);color:#f43f5e;
-               border-radius:4px;font-size:10px;padding:2px 7px;cursor:pointer;font-family:inherit">✕</button>
+    <div style="padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+        <input type="color" value="${ma.color}" onchange="event.stopPropagation();updateMAColor(${ma.id},this.value)" onclick="event.stopPropagation()"
+          style="width:24px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:0;background:none;flex-shrink:0">
+        <span style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:1px;flex-shrink:0">Period</span>
+        <input type="number" value="${ma.period}" min="1" max="500"
+          onchange="event.stopPropagation();updateMAPeriod(${ma.id},this.value)" onclick="event.stopPropagation()"
+          style="width:52px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
+                 border-radius:4px;color:var(--t1);font-family:'IBM Plex Mono',monospace;font-size:11px;
+                 padding:3px 6px;outline:none;flex-shrink:0">
+        <span style="font-size:10px;color:${ma.color};flex:1;font-weight:600">${ma.type} ${ma.period}</span>
+        <button onclick="event.stopPropagation();removeMALine(${ma.id})"
+          style="background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.3);color:#f43f5e;
+                 border-radius:4px;font-size:10px;padding:2px 8px;cursor:pointer;font-family:inherit;flex-shrink:0">✕</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px;padding-left:31px">
+        <span style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-right:3px;flex-shrink:0">Type</span>
+        ${_typePills(ma.id, ma.type)}
+      </div>
     </div>
   `).join('');
 }
@@ -194,7 +227,7 @@ function _updateLabelBar(closes, idx) {
     const el = document.getElementById(`mav-${ma.id}`);
     if (!el) return;
     if (closes === null || idx < 0) { el.textContent = ''; return; }
-    const v = _maAt(closes, ma.period, idx);
+    const v = _maAt(closes, ma.period, ma.type, idx);
     el.textContent = v ? fp(v) : '';
   });
 }
@@ -222,18 +255,70 @@ function _applyMAToggleUI() {
 }
 
 // ── Math helpers ──────────────────────────────────────────────────────
-function _maAt(closes, n, idx) {
-  if (idx < n - 1) return null;
-  let sum = 0;
-  for (let i = idx - n + 1; i <= idx; i++) sum += closes[i];
-  return sum / n;
+
+// Build full array of MA values
+function _buildMA(closes, n, type) {
+  switch (type) {
+    case 'EMA': return _buildEMA(closes, n);
+    case 'WMA': return _buildWMA(closes, n);
+    default:    return _buildSMA(closes, n);
+  }
 }
 
-function _buildMA(closes, n) {
+// Value at a single index (used for crosshair label)
+function _maAt(closes, n, type, idx) {
+  switch (type) {
+    case 'EMA': {
+      const arr = _buildEMA(closes, n);
+      return arr[idx];
+    }
+    case 'WMA': {
+      const arr = _buildWMA(closes, n);
+      return arr[idx];
+    }
+    default: {
+      if (idx < n - 1) return null;
+      let sum = 0;
+      for (let i = idx - n + 1; i <= idx; i++) sum += closes[i];
+      return sum / n;
+    }
+  }
+}
+
+// SMA
+function _buildSMA(closes, n) {
   return closes.map((_, i) => {
     if (i < n - 1) return null;
     let s = 0;
     for (let j = i - n + 1; j <= i; j++) s += closes[j];
     return s / n;
+  });
+}
+
+// EMA — uses standard smoothing factor k = 2/(n+1), seeds from first SMA
+function _buildEMA(closes, n) {
+  const result = new Array(closes.length).fill(null);
+  if (closes.length < n) return result;
+  const k = 2 / (n + 1);
+  // seed: first EMA = SMA of first n closes
+  let ema = 0;
+  for (let i = 0; i < n; i++) ema += closes[i];
+  ema /= n;
+  result[n - 1] = ema;
+  for (let i = n; i < closes.length; i++) {
+    ema = closes[i] * k + ema * (1 - k);
+    result[i] = ema;
+  }
+  return result;
+}
+
+// WMA — linearly weighted: most recent bar has weight n, oldest has weight 1
+function _buildWMA(closes, n) {
+  const denom = (n * (n + 1)) / 2;
+  return closes.map((_, i) => {
+    if (i < n - 1) return null;
+    let sum = 0;
+    for (let j = 0; j < n; j++) sum += closes[i - j] * (n - j);
+    return sum / denom;
   });
 }

@@ -35,7 +35,7 @@
     <button class="nl">Analytics</button>
   </div>
   <div class="nav-r">
-    <div class="pill"><span class="lbl">Balance</span><span class="val" id="navBal">$100,000.00</span></div>
+    <div class="pill mob-bal-pill"><span class="lbl">Balance</span><span class="val" id="navBal">$100,000.00</span></div>
     <div class="pill"><span class="lbl">Session PnL</span><span class="val" id="sPnl" style="color:var(--t3)">$0.00</span></div>
     <div class="pill" title="Feed status"><span class="feed-dot reconnecting" id="feedDot"></span><span class="lbl" id="feedLbl">Connecting…</span></div>
     <button class="nbtn" onclick="toast('Settings coming soon','info')">⚙ Settings</button>
@@ -100,7 +100,7 @@
 </div>
 
 <!-- MA Settings Panel — outside .main so overflow:hidden doesn't clip it -->
-<div id="maSettingsPanel" style="display:none;position:fixed;z-index:1000;width:260px;
+<div id="maSettingsPanel" onclick="event.stopPropagation()" style="display:none;position:fixed;z-index:1000;width:300px;
   flex-direction:column;gap:0;
   background:rgba(10,14,28,0.98);border:1px solid rgba(255,255,255,0.13);
   border-radius:10px;padding:14px 16px 16px;
@@ -126,9 +126,16 @@
 
   <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.07)">
     <div style="font-size:9px;color:#4a5568;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">Add New MA</div>
-    <div style="display:flex;gap:8px;align-items:center">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
       <input type="color" id="maNewColor" value="#10b981"
         style="width:30px;height:30px;border:1px solid rgba(255,255,255,0.1);border-radius:5px;cursor:pointer;padding:2px;background:rgba(255,255,255,0.05);flex-shrink:0">
+      <select id="maNewType"
+        style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:5px;
+               color:#e2e8f0;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:6px 8px;outline:none;cursor:pointer;flex-shrink:0">
+        <option value="SMA">SMA</option>
+        <option value="EMA" selected>EMA</option>
+        <option value="WMA">WMA</option>
+      </select>
       <input type="number" id="maNewPeriod" placeholder="Period (1–500)" min="1" max="500"
         style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);
                border-radius:5px;color:#e2e8f0;font-family:'IBM Plex Mono',monospace;
@@ -222,6 +229,34 @@
 </div>
 
 <div class="tstack" id="tstack"></div>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav id="mobNav">
+  <button class="mob-tab on" id="mobTab-chart" onclick="mobSwitch('chart')">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+    Chart
+  </button>
+  <button class="mob-tab" id="mobTab-markets" onclick="mobSwitch('markets')">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+    </svg>
+    Markets
+  </button>
+  <button class="mob-tab" id="mobTab-trade" onclick="mobSwitch('trade')">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+    </svg>
+    Trade
+  </button>
+  <button class="mob-tab" id="mobTab-positions" onclick="mobSwitch('positions')">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+    Positions
+  </button>
+</nav>
 
 <script src="feed.js"></script>
 <script src="volume.js"></script>
@@ -329,6 +364,57 @@ renderPos();
 renderHist();
 startFeed();
 setInterval(loop, 500);
+
+// ── MOBILE NAV ──
+const MOB_VIEWS = {
+  chart:     '.main',
+  markets:   '.sidebar',
+  trade:     '.rp',
+  positions: '.bot',
+};
+let _mobCurrent = 'chart';
+
+function mobSwitch(view) {
+  if (window.innerWidth > 768) return;
+  Object.values(MOB_VIEWS).forEach(sel => {
+    const el = document.querySelector(sel);
+    if (el) el.classList.remove('mob-active');
+  });
+  document.querySelectorAll('.mob-tab').forEach(t => t.classList.remove('on'));
+  const panel = document.querySelector(MOB_VIEWS[view]);
+  if (panel) panel.classList.add('mob-active');
+  const tab = document.getElementById('mobTab-' + view);
+  if (tab) tab.classList.add('on');
+  _mobCurrent = view;
+  if (view === 'chart' && typeof lwChart !== 'undefined' && lwChart) {
+    setTimeout(() => {
+      const cw = document.getElementById('cw');
+      if (cw) lwChart.resize(cw.clientWidth, cw.clientHeight);
+    }, 30);
+  }
+}
+
+function _initMobile() {
+  if (window.innerWidth > 768) return;
+  mobSwitch('chart');
+}
+
+// When selecting a pair on mobile, jump to chart view
+const _origSelPair = selPair;
+selPair = function(sym) {
+  _origSelPair(sym);
+  if (window.innerWidth <= 768) mobSwitch('chart');
+};
+
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 768) {
+    document.querySelectorAll('.mob-active').forEach(el => el.classList.remove('mob-active'));
+  } else {
+    mobSwitch(_mobCurrent);
+  }
+});
+
+_initMobile();
 
 // Close MA settings panel when clicking outside
 document.addEventListener('click', e => {

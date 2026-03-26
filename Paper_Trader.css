@@ -296,3 +296,267 @@ tbody tr:hover{background:var(--bg-hover)}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border-mid);border-radius:2px}
+
+/* ══════════════════════════════════════════════════════════════════
+   MOBILE — phones (≤ 768px)
+   Layout: single column, bottom tab bar navigation
+   ══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  html, body { overflow: hidden; height: 100%; touch-action: pan-y; }
+
+  /* ── App shell — stacked single column ── */
+  .app {
+    grid-template-rows: 48px 1fr;
+    grid-template-columns: 1fr;
+    height: 100dvh;
+    height: 100vh; /* fallback */
+    overflow: hidden;
+  }
+
+  /* ── Nav — compact mobile header ── */
+  nav {
+    grid-column: 1;
+    height: 48px;
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .nav-links { display: none; }
+  .logo-tag { display: none; }
+  .logo-name { font-size: 13px; letter-spacing: 1.8px; }
+  .logo-glyph { width: 26px; height: 26px; font-size: 12px; }
+  .logo { padding-right: 12px; margin-right: 8px; }
+
+  .nav-r { gap: 5px; }
+  .nav-r .pill { display: none; }
+  .nav-r .pill:last-of-type { display: flex; } /* feed status only */
+  .nav-r .pill:last-of-type .lbl { display: none; }
+  .mob-bal-pill { display: flex !important; }
+  .mob-bal-pill .lbl { display: none; }
+  .mob-bal-pill .val { font-size: 12px; font-weight: 700; }
+
+  /* Hide settings/reset in nav on mobile — moved to side sheet */
+  .nbtn { display: none; }
+
+  /* ── Mobile view manager ── */
+  /* All major panels hidden by default; shown via .mob-active class */
+  .sidebar, .main, .rp, .bot {
+    display: none !important;
+    position: absolute;
+    top: 48px;
+    left: 0;
+    right: 0;
+    bottom: 56px; /* space for bottom tab bar */
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: hidden;
+  }
+
+  .sidebar.mob-active,
+  .main.mob-active,
+  .rp.mob-active,
+  .bot.mob-active {
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  /* ── Sidebar (Markets view) ── */
+  .sidebar {
+    backdrop-filter: blur(24px);
+    z-index: 10;
+  }
+  .sb-head { padding: 10px 12px 8px; }
+  .sb-title { font-size: 10px; }
+  .sb-search input { font-size: 13px; padding: 9px 10px 9px 30px; }
+  .pair-list { padding: 5px 10px; }
+  .pi { padding: 9px 10px; }
+  .p-base { font-size: 13px; }
+  .p-price { font-size: 12px; }
+  .p-chg { font-size: 10px; }
+  .coin { width: 28px; height: 28px; font-size: 9px; }
+
+  /* ── Main chart view ── */
+  .main {
+    z-index: 10;
+    background: var(--bg-base);
+  }
+
+  .ch {
+    height: auto;
+    min-height: 48px;
+    padding: 8px 12px;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .ch-symbol { font-size: 13px; padding-right: 10px; }
+  .ch-symbol span { font-size: 11px; }
+  .ch-price { font-size: 18px; }
+  .ptag { font-size: 10px; padding: 2px 7px; }
+
+  /* Stats — scroll horizontally */
+  .ch-stats {
+    width: 100%;
+    order: 10;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    flex-wrap: nowrap;
+  }
+  .cs { flex-shrink: 0; }
+  .cs-lbl { font-size: 8px; }
+  .cs-val { font-size: 11px; }
+
+  /* Timeframe row — scrollable */
+  .tf-row {
+    width: 100%;
+    order: 11;
+    margin-left: 0;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tf-row::-webkit-scrollbar { display: none; }
+  .tfb { padding: 5px 9px; font-size: 10px; flex-shrink: 0; }
+  .sep { margin: 0 4px; }
+
+  /* Chart canvas area */
+  .cw { flex: 1; min-height: 0; }
+  .ma-bar { top: 6px; left: 8px; gap: 8px; }
+
+  /* ── Right panel (Trade/Book) ── */
+  .rp {
+    z-index: 10;
+  }
+  .tabbar { height: 40px; }
+  .tbi { font-size: 11px; padding: 8px 6px; }
+  .tpanel.on { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+  .ofw { padding: 12px; gap: 10px; overflow-y: auto; flex: 1; }
+
+  /* Buy/Sell buttons */
+  .bst { gap: 3px; }
+  .bsb { padding: 10px; font-size: 12px; }
+
+  /* Order type buttons */
+  .otr { gap: 4px; }
+  .otb { padding: 7px 4px; font-size: 10px; }
+
+  /* Form inputs */
+  .fi { font-size: 14px; padding: 11px 44px 11px 12px; }
+  .fl { font-size: 9px; }
+  .fl span { font-size: 10px; }
+
+  /* Percentage slider labels */
+  .plb { font-size: 10px; }
+
+  /* Order summary */
+  .osum { padding: 10px 12px; }
+  .sr { font-size: 11px; }
+
+  /* Place order button */
+  .pob { padding: 14px; font-size: 14px; letter-spacing: 1px; }
+
+  /* Order book */
+  .obw { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .obh { padding: 7px 12px; font-size: 9px; }
+  .ob-asks, .ob-bids { flex: 1; overflow: hidden; }
+  .obr { padding: 4px 12px; font-size: 11px; }
+  .ob-mp { font-size: 14px; }
+
+  /* ── Bottom panel (Positions/Orders/History) ── */
+  .bot {
+    z-index: 10;
+    overflow: hidden;
+  }
+  .bot-tabs { padding: 0 10px; }
+  .bt { padding: 8px 10px; font-size: 10px; }
+  .bc.on { display: block; overflow-y: auto; flex: 1; }
+
+  /* Tables — make them scroll horizontally */
+  table { min-width: 520px; }
+  .bc { overflow-x: auto; overflow-y: auto; }
+  thead th { padding: 6px 10px; font-size: 8px; }
+  tbody td { padding: 6px 10px; font-size: 10px; }
+  .abt { padding: 4px 8px; font-size: 9px; }
+
+  /* Toasts — above bottom nav */
+  .tstack { bottom: 64px; right: 12px; left: 12px; align-items: flex-end; }
+  .ti { max-width: 100%; font-size: 12px; }
+
+  /* MA Settings panel — full-width on mobile */
+  #maSettingsPanel {
+    width: calc(100vw - 16px) !important;
+    left: 8px !important;
+    right: 8px !important;
+    top: auto !important;
+    bottom: 64px !important;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  /* ── Bottom tab bar ── */
+  #mobNav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: rgba(3, 5, 13, 0.97);
+    border-top: 1px solid var(--border-dim);
+    backdrop-filter: blur(24px);
+    display: flex;
+    align-items: stretch;
+    z-index: 100;
+  }
+  .mob-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    color: var(--t3);
+    font-family: var(--sans);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    border: none;
+    background: none;
+    transition: color .18s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mob-tab.on { color: var(--cyan); }
+  .mob-tab svg { width: 20px; height: 20px; stroke-width: 1.6; }
+  .mob-tab.on svg { stroke: var(--cyan); }
+  .mob-tab svg { stroke: var(--t3); fill: none; transition: stroke .18s; }
+}
+
+/* ── Tablet (769px – 1024px): two-column sidebar + main ── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .app {
+    grid-template-rows: 52px 1fr 160px;
+    grid-template-columns: 170px 1fr 260px;
+  }
+  .nav-links { gap: 0; }
+  .nl { padding: 5px 10px; font-size: 11px; }
+  .ch-price { font-size: 18px; }
+  .ch-stats { gap: 10px; }
+  .cs-lbl { font-size: 8px; }
+  .cs-val { font-size: 11px; }
+  .ofw { padding: 10px; gap: 9px; }
+  #maSettingsPanel { width: 270px !important; }
+}
+
+/* ── Desktop: hide mobile nav ── */
+@media (min-width: 769px) {
+  #mobNav { display: none !important; }
+  .sidebar { display: flex !important; position: static !important; }
+  .main { display: flex !important; position: static !important; }
+  .rp { display: flex !important; position: static !important; }
+  .bot { display: block !important; position: static !important; bottom: auto !important; }
+  .bc.on { display: block; }
+}
