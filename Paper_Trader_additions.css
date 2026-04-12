@@ -1,0 +1,84 @@
+/* ── Previously inline in index.html — now consolidated here ── */
+
+.sym-sep  { color:var(--t2);font-weight:400;font-size:13px }
+.sym-meta { color:var(--t3);font-weight:400;font-size:11px;letter-spacing:.3px }
+
+/* Indicators panel rows + toggles */
+.ind-section-lbl {
+  font-size:9px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;
+  color:#4a5568;padding:6px 0 5px;margin-top:4px;
+  border-top:1px solid rgba(255,255,255,0.06);
+}
+.ind-section-lbl:first-child { border-top:none;margin-top:0; }
+.ind-row {
+  display:flex;align-items:center;gap:8px;padding:7px 4px;
+  border-radius:6px;transition:background .15s;cursor:default;
+}
+.ind-row:hover { background:rgba(255,255,255,0.04); }
+.ind-dot  { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+.ind-lbl  {
+  flex:1;font-size:11px;color:#c4cdd8;
+  font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;
+}
+.ind-cfg  {
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
+  color:#94a3b8;border-radius:4px;font-size:11px;padding:2px 7px;
+  cursor:pointer;font-family:inherit;transition:all .15s;flex-shrink:0;
+}
+.ind-cfg:hover { background:rgba(255,255,255,0.12);color:#e2e8f0; }
+
+/* Toggle switch */
+.ind-tog {
+  position:relative;width:32px;height:17px;border-radius:9px;flex-shrink:0;
+  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.14);
+  cursor:pointer;transition:background .2s,border-color .2s;
+}
+.ind-tog.on { background:var(--cyan);border-color:var(--cyan); }
+.ind-tog-knob {
+  position:absolute;top:2px;left:2px;width:11px;height:11px;
+  border-radius:50%;background:#fff;transition:left .2s;pointer-events:none;
+  box-shadow:0 1px 3px rgba(0,0,0,0.4);
+}
+.ind-tog.on .ind-tog-knob { left:17px; }
+
+/* ── MARKET SWITCHER (Crypto / Stocks) ─────────────────────────────── */
+.market-switcher {
+  display:flex;gap:4px;margin-top:8px;margin-bottom:2px;
+}
+.msw-btn {
+  flex:1;display:flex;align-items:center;justify-content:center;gap:5px;
+  padding:6px 8px;border-radius:7px;font-size:10px;font-weight:600;
+  letter-spacing:.4px;text-transform:uppercase;cursor:pointer;
+  border:1px solid var(--border-dim);background:none;color:var(--t3);
+  font-family:var(--sans);transition:all .18s;
+}
+.msw-btn:hover { color:var(--t2);border-color:var(--border-mid); }
+.msw-btn.on {
+  background:var(--cyan-dim);
+  border-color:rgba(0,212,255,.2);
+  color:var(--cyan);
+}
+/* Stocks tab active state gets amber accent */
+#msw-stocks.on {
+  background:rgba(245,158,11,.1);
+  border-color:rgba(245,158,11,.28);
+  color:#f59e0b;
+}
+.msw-ico { font-size:11px;line-height:1; }
+
+/* Market open/closed pill inside the stocks tab button */
+.msw-badge {
+  font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  padding:1px 5px;border-radius:6px;line-height:14px;
+  font-family:var(--mono);flex-shrink:0;
+}
+.msw-badge.open   { background:rgba(16,185,129,.18);color:#10b981;border:1px solid rgba(16,185,129,.3); }
+.msw-badge.closed { background:rgba(74,85,104,.18);color:#4a5568;border:1px solid rgba(74,85,104,.25); }
+
+/* ── STOCK COIN BADGE ───────────────────────────────────────────────── */
+.stock-badge {
+  width:25px;height:25px;border-radius:5px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:7px;font-weight:800;font-family:var(--mono);
+  letter-spacing:-.2px;text-align:center;line-height:1;
+}

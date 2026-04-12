@@ -31,6 +31,10 @@ function initMAIndicator() {
   _renderLabelBar();
   _renderSettingsRows();
   _applyMAToggleUI();
+
+  // Apply restored visibility to the label bar
+  const bar = document.getElementById('ma-bar');
+  if (bar) bar.style.display = maVisible ? 'flex' : 'none';
 }
 
 // ── Push data — called by applyCandles() in chart.js ─────────────────
@@ -49,24 +53,55 @@ function setMAData(candles) {
   _updateLabelBar(closes, closes.length - 1);
 }
 
+// ── Reset to factory defaults ─────────────────────────────────────────
+function resetMADefaults() {
+  maLines.forEach(ma => {
+    if (ma.series) { try { lwChart.removeSeries(ma.series); } catch(_){} }
+  });
+  maLines = [
+    { id: 1, period: 7,  color: '#f59e0b', type: 'EMA' },
+    { id: 2, period: 25, color: '#a78bfa', type: 'EMA' },
+    { id: 3, period: 99, color: '#38bdf8', type: 'SMA' },
+  ];
+  _maNextId = 4;
+  maLines.forEach(ma => {
+    _createSeries(ma);
+    ma.series.applyOptions({ visible: maVisible });
+  });
+  if (candles.length) setMAData(candles);
+  _renderLabelBar();
+  _renderSettingsRows();
+  if (typeof _syncIndToggles === 'function') _syncIndToggles();
+  if (typeof saveSettings === 'function') saveSettings();
+  if (typeof toast === 'function') toast('MA lines reset to defaults', 'info');
+}
+
 // ── Global toggle ─────────────────────────────────────────────────────
 function toggleMA() {
   maVisible = !maVisible;
   maLines.forEach(ma => ma.series && ma.series.applyOptions({ visible: maVisible }));
-  document.getElementById('ma-bar') && (document.getElementById('ma-bar').style.opacity = maVisible ? '1' : '0.25');
+  const bar = document.getElementById('ma-bar');
+  if (bar) bar.style.display = maVisible ? 'flex' : 'none';
   _applyMAToggleUI();
 }
 
 // ── Settings panel toggle ─────────────────────────────────────────────
 function openMASettings() {
-  const panel = document.getElementById('maSettingsPanel');
-  const btn   = document.getElementById('maToggle');
-  if (!panel || !btn) return;
+  const panel    = document.getElementById('maSettingsPanel');
+  const indPanel = document.getElementById('indicatorsPanel');
+  if (!panel) return;
   const isOpen = panel.style.display === 'flex';
   if (isOpen) { panel.style.display = 'none'; return; }
-  const r = btn.getBoundingClientRect();
-  panel.style.top  = (r.bottom + 6) + 'px';
-  panel.style.left = Math.max(8, r.right - 280) + 'px';
+  if (indPanel && indPanel.style.display === 'flex') {
+    const r = indPanel.getBoundingClientRect();
+    panel.style.top  = r.top + 'px';
+    panel.style.left = Math.max(8, r.left - 308) + 'px';
+  } else {
+    const btn = document.getElementById('indicatorsBtn');
+    const r = btn ? btn.getBoundingClientRect() : { bottom: 60, right: window.innerWidth - 8 };
+    panel.style.top  = (r.bottom + 6) + 'px';
+    panel.style.left = Math.max(8, Math.min(r.right - 300, window.innerWidth - 308)) + 'px';
+  }
   panel.style.display = 'flex';
 }
 
@@ -138,7 +173,7 @@ function updateMAType(id, type) {
   ma.type = type;
   _refreshSeries(ma);
   _renderLabelBar();
-  _renderSettingsRows(); // ← was missing: pills never re-rendered so type appeared stuck
+  _renderSettingsRows();
 }
 
 // ── Internal: recalculate + push data for one MA ──────────────────────
@@ -234,24 +269,7 @@ function _updateLabelBar(closes, idx) {
 
 // ── Internal: MA toggle button appearance ────────────────────────────
 function _applyMAToggleUI() {
-  const btn = document.getElementById('maToggle');
-  const dot = document.getElementById('maDot');
-  if (!btn) return;
-  if (maVisible) {
-    btn.style.background  = 'rgba(245,158,11,0.15)';
-    btn.style.borderColor = 'rgba(245,158,11,0.45)';
-    btn.style.color       = '#f59e0b';
-    btn.style.opacity     = '1';
-    btn.title             = 'Hide MA';
-    if (dot) dot.style.background = '#f59e0b';
-  } else {
-    btn.style.background  = 'rgba(255,255,255,0.04)';
-    btn.style.borderColor = 'rgba(255,255,255,0.10)';
-    btn.style.color       = '#4a5568';
-    btn.style.opacity     = '0.55';
-    btn.title             = 'Show MA';
-    if (dot) dot.style.background = '#4a5568';
-  }
+  if (typeof _syncIndToggles === 'function') _syncIndToggles();
 }
 
 // ── Math helpers ──────────────────────────────────────────────────────

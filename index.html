@@ -4,16 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>APEX — Paper Trading</title>
+<!-- ── DEVICE DETECTION — runs before CSS to avoid layout flash ── -->
+<script>
+(function(){
+  var ua      = navigator.userAgent;
+  var isPhone = /iPhone|Android.*Mobile|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  var isTablet= /iPad|Android(?!.*Mobile)/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/i.test(ua));
+  var hasTouch= ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  var narrow  = window.innerWidth <= 768;
+  var mobile  = isPhone || (hasTouch && narrow) || narrow;
+  var tablet  = !mobile && (isTablet || (hasTouch && window.innerWidth <= 1024));
+  if (mobile)       document.documentElement.classList.add('is-mobile');
+  else if (tablet)  document.documentElement.classList.add('is-tablet');
+  else              document.documentElement.classList.add('is-desktop');
+  // Expose globally so JS can read without re-detecting
+  window._APEX_DEVICE = mobile ? 'mobile' : tablet ? 'tablet' : 'desktop';
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="Paper_Trader.css">
-<style>
-  #volToggle.vol-off {
-    background: rgba(255,255,255,0.04) !important;
-    color: var(--t3, #4a5568) !important;
-    border-color: rgba(255,255,255,0.10) !important;
-    opacity: .6;
-  }
-</style>
+<link rel="stylesheet" href="Paper_Trader_additions.css">
 <!-- Lightweight Charts v4 — TradingView, Apache-2.0 -->
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 </head>
@@ -22,250 +32,239 @@
 <div class="noise"></div>
 
 <div class="app">
-<!-- NAV -->
-<nav>
-  <div class="logo">
-    <div class="logo-glyph">A</div>
-    <div><div class="logo-name">APEX</div><div class="logo-tag">Paper Trading</div></div>
-  </div>
-  <div class="nav-links">
-    <button class="nl on">Trade</button>
-    <button class="nl">Markets</button>
-    <button class="nl">Portfolio</button>
-    <button class="nl">Analytics</button>
-  </div>
-  <div class="nav-r">
-    <div class="pill mob-bal-pill"><span class="lbl">Balance</span><span class="val" id="navBal">$100,000.00</span></div>
-    <div class="pill"><span class="lbl">Session PnL</span><span class="val" id="sPnl" style="color:var(--t3)">$0.00</span></div>
-    <div class="pill" title="Feed status"><span class="feed-dot reconnecting" id="feedDot"></span><span class="lbl" id="feedLbl">Connecting…</span></div>
-    <button class="nbtn" onclick="toast('Settings coming soon','info')">⚙ Settings</button>
-    <button class="nbtn danger" onclick="resetAcc()">↺ Reset</button>
-  </div>
-</nav>
 
-<!-- SIDEBAR -->
-<div class="sidebar">
-  <div class="sb-head">
-    <div class="sb-title">Markets</div>
-    <div class="sb-search"><span class="ico">⌕</span><input placeholder="Search..." oninput="renderPairs(this.value)"></div>
-  </div>
-  <div class="pair-list" id="pairList"></div>
-</div>
-
-<!-- MAIN CHART -->
-<div class="main">
-  <div class="ch">
-    <div class="ch-symbol" id="hSym">BTC<span>/USDT</span></div>
-    <div class="ch-price" id="hPrice">$67,420</div>
-    <div class="ptag up" id="hChg">+2.34%</div>
-    <div class="ch-stats">
-      <div class="cs"><span class="cs-lbl">24h High</span><span class="cs-val up" id="s24h">—</span></div>
-      <div class="cs"><span class="cs-lbl">24h Low</span><span class="cs-val dn" id="s24l">—</span></div>
-      <div class="cs"><span class="cs-lbl">Volume</span><span class="cs-val" id="sVol">—</span></div>
-      <div class="cs"><span class="cs-lbl">Mark</span><span class="cs-val" id="sMark">—</span></div>
+  <!-- NAV -->
+  <nav>
+    <div class="logo">
+      <div class="logo-glyph">A</div>
+      <div><div class="logo-name">APEX</div><div class="logo-tag">Paper Trading</div></div>
     </div>
-    <div class="tf-row">
-      <div class="sep"></div>
-      <button class="tfb on" onclick="setTF(this)">1m</button>
-      <button class="tfb" onclick="setTF(this)">3m</button>
-      <button class="tfb" onclick="setTF(this)">5m</button>
-      <button class="tfb" onclick="setTF(this)">15m</button>
-      <button class="tfb" onclick="setTF(this)">30m</button>
-      <div class="sep"></div>
-      <button class="tfb" onclick="setTF(this)">1h</button>
-      <button class="tfb" onclick="setTF(this)">2h</button>
-      <button class="tfb" onclick="setTF(this)">4h</button>
-      <button class="tfb" onclick="setTF(this)">6h</button>
-      <button class="tfb" onclick="setTF(this)">12h</button>
-      <div class="sep"></div>
-      <button class="tfb" onclick="setTF(this)">1D</button>
-      <button class="tfb" onclick="setTF(this)">3D</button>
-      <button class="tfb" onclick="setTF(this)">1W</button>
-      <button class="tfb" onclick="setTF(this)">1M</button>
-      <div class="sep"></div>
-      <button id="maToggle" onclick="openMASettings()" title="MA Settings" style="display:flex;align-items:center;gap:5px;font-size:10px;padding:3px 8px 3px 6px;border-radius:4px;border:1px solid rgba(245,158,11,0.45);background:rgba(245,158,11,0.15);color:#f59e0b;cursor:pointer;font-family:'IBM Plex Mono',monospace;letter-spacing:.04em;transition:all .18s">
-        <span id="maDot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#f59e0b;transition:background .18s;flex-shrink:0"></span>
-        MA ▾
-      </button>
-      <button id="volToggle" onclick="toggleVolume()" title="Hide Volume" style="display:flex;align-items:center;gap:5px;font-size:10px;padding:3px 8px 3px 6px;border-radius:4px;border:1px solid rgba(38,166,154,0.45);background:rgba(38,166,154,0.15);color:#26a69a;cursor:pointer;font-family:'IBM Plex Mono',monospace;letter-spacing:.04em;transition:all .18s">
-        <span id="volDot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#26a69a;transition:background .18s;flex-shrink:0"></span>
-        VOL
-      </button>
+    <div class="nav-links">
+      <button class="nl on">Trade</button>
+      <button class="nl">Markets</button>
+      <button class="nl">Portfolio</button>
+      <button class="nl">Analytics</button>
     </div>
-  </div>
-  <!-- Lightweight Charts mounts directly into this div -->
-  <div class="cw" id="cw">
-    <div class="ma-bar" id="ma-bar"><!-- rendered by movingaverage.js --></div>
-  </div>
-</div>
-
-<!-- MA Settings Panel — outside .main so overflow:hidden doesn't clip it -->
-<div id="maSettingsPanel" onclick="event.stopPropagation()" style="display:none;position:fixed;z-index:1000;width:300px;
-  flex-direction:column;gap:0;
-  background:rgba(10,14,28,0.98);border:1px solid rgba(255,255,255,0.13);
-  border-radius:10px;padding:14px 16px 16px;
-  box-shadow:0 16px 48px rgba(0,0,0,0.7);backdrop-filter:blur(20px);
-  font-family:'IBM Plex Mono',monospace;">
-
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-    <span style="font-size:11px;font-weight:600;color:#e2e8f0;letter-spacing:.8px;text-transform:uppercase">MA Lines</span>
-    <div style="display:flex;gap:6px;align-items:center">
-      <button onclick="toggleMA()"
-        style="font-size:10px;padding:2px 9px;border-radius:4px;border:1px solid rgba(245,158,11,0.4);
-               background:rgba(245,158,11,0.12);color:#f59e0b;cursor:pointer;font-family:inherit;letter-spacing:.03em">
-        Toggle All
-      </button>
-      <button onclick="openMASettings()"
-        style="font-size:13px;line-height:1;padding:2px 8px;border-radius:4px;
-               border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);
-               color:#94a3b8;cursor:pointer;font-family:inherit">✕</button>
+    <div class="nav-r">
+      <div class="pill mob-bal-pill"><span class="lbl">Balance</span><span class="val" id="navBal">$100,000.00</span></div>
+      <div class="pill"><span class="lbl">Session PnL</span><span class="val" id="sPnl" style="color:var(--t3)">$0.00</span></div>
+      <div class="pill" title="Feed status"><span class="feed-dot reconnecting" id="feedDot"></span><span class="lbl" id="feedLbl">Connecting…</span></div>
+      <button class="nbtn" onclick="toast('Settings coming soon','info')">⚙ Settings</button>
+      <button class="nbtn danger" onclick="resetAcc()">↺ Reset</button>
     </div>
-  </div>
+  </nav>
 
-  <div id="maLinesList" style="max-height:220px;overflow-y:auto;margin-bottom:2px"></div>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-head">
+      <div class="sb-title">Markets</div>
 
-  <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.07)">
-    <div style="font-size:9px;color:#4a5568;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">Add New MA</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-      <input type="color" id="maNewColor" value="#10b981"
-        style="width:30px;height:30px;border:1px solid rgba(255,255,255,0.1);border-radius:5px;cursor:pointer;padding:2px;background:rgba(255,255,255,0.05);flex-shrink:0">
-      <select id="maNewType"
-        style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:5px;
-               color:#e2e8f0;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:6px 8px;outline:none;cursor:pointer;flex-shrink:0">
-        <option value="SMA">SMA</option>
-        <option value="EMA" selected>EMA</option>
-        <option value="WMA">WMA</option>
-      </select>
-      <input type="number" id="maNewPeriod" placeholder="Period (1–500)" min="1" max="500"
-        style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);
-               border-radius:5px;color:#e2e8f0;font-family:'IBM Plex Mono',monospace;
-               font-size:11px;padding:6px 9px;outline:none;min-width:0"
-        onkeydown="if(event.key==='Enter')addMALine()">
-      <button onclick="addMALine()"
-        style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.38);
-               color:#10b981;border-radius:5px;font-size:11px;padding:6px 11px;
-               cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">+ Add</button>
-    </div>
-  </div>
-</div>
+      <!-- Market-mode switcher: Crypto / Stocks -->
+      <div class="market-switcher">
+        <button class="msw-btn on" id="msw-crypto" onclick="switchToCryptoTab()">
+          <span class="msw-ico">₿</span> Crypto
+        </button>
+        <button class="msw-btn" id="msw-stocks" onclick="switchToStocksTab()">
+          <span class="msw-ico">📈</span> Stocks
+          <span class="msw-badge closed" id="marketStatusBadge">Closed</span>
+        </button>
+      </div>
 
-<!-- RIGHT PANEL -->
-<div class="rp">
-  <div class="tabbar">
-    <div class="tbi on" onclick="switchTab(this,'fp')">Order</div>
-    <div class="tbi" onclick="switchTab(this,'bp')">Book</div>
-  </div>
-
-  <!-- ORDER FORM -->
-  <div class="tpanel on" id="fp">
-    <div class="ofw">
-      <div class="bst">
-        <button class="bsb buy on" id="buyBtn" onclick="setSide('buy')">Buy</button>
-        <button class="bsb sell" id="sellBtn" onclick="setSide('sell')">Sell</button>
-      </div>
-      <div class="otr">
-        <button class="otb on" onclick="setOT(this,'market')">Market</button>
-        <button class="otb" onclick="setOT(this,'limit')">Limit</button>
-        <button class="otb" onclick="setOT(this,'stop')">Stop-L</button>
-      </div>
-      <div class="fg" id="lpf" style="display:none">
-        <div class="fl">Limit Price</div>
-        <div class="fw"><input type="number" class="fi" id="lp" placeholder="0.00"><span class="fu">USDT</span></div>
-      </div>
-      <div class="fg">
-        <div class="fl">Amount <span id="avShow">Avail: $100,000.00</span></div>
-        <div class="fw"><input type="number" class="fi" id="amt" placeholder="0.00000" oninput="calcT()"><span class="fu" id="aunit">BTC</span></div>
-      </div>
-      <div class="slw">
-        <input type="range" min="0" max="100" value="0" id="psl" oninput="slPct(this.value)">
-        <div class="pl">
-          <span class="plb" onclick="slPct(0)">0%</span>
-          <span class="plb" onclick="slPct(25)">25%</span>
-          <span class="plb" onclick="slPct(50)">50%</span>
-          <span class="plb" onclick="slPct(75)">75%</span>
-          <span class="plb" onclick="slPct(100)">100%</span>
+      <!-- Crypto: search + All/Fav tabs -->
+      <div id="cryptoSbHead">
+        <div class="sb-search">
+          <span class="ico">⌕</span>
+          <input id="cryptoSearchInput" placeholder="Search crypto…" oninput="_pairFilter=this.value;renderPairs(this.value)">
+        </div>
+        <div class="sb-tabs">
+          <button class="sbt on" id="sbt-all" onclick="setSbTab('all')">All</button>
+          <button class="sbt" id="sbt-fav" onclick="setSbTab('fav')">★ Favorites <span class="fav-count" id="favCount" style="display:none"></span></button>
         </div>
       </div>
-      <div class="osum">
-        <div class="sr"><span class="sl">Price</span><span class="sv" id="sPrice">Market</span></div>
-        <div class="sr"><span class="sl">Total</span><span class="sv" id="sTotal" style="color:var(--cyan)">$0.00</span></div>
-        <div class="sr"><span class="sl">Fee (0.1%)</span><span class="sv dim" id="sFee">$0.00</span></div>
+
+      <!-- Stocks: search only -->
+      <div id="stocksSbHead" style="display:none">
+        <div class="sb-search">
+          <span class="ico">⌕</span>
+          <input id="stockSearchInput" placeholder="Search stocks…" oninput="renderStockPairs(this.value)">
+        </div>
       </div>
-      <button class="pob buy" id="placeBtn" onclick="placeOrder()">BUY BTC</button>
+    </div>
+
+    <!-- Crypto list -->
+    <div class="pair-list" id="pairList"></div>
+
+    <!-- Stock list (hidden until stocks tab active) -->
+    <div class="pair-list" id="stockPairList" style="display:none"></div>
+  </div>
+
+  <!-- MAIN CHART -->
+  <div class="main">
+    <div class="ch">
+      <div class="ch-symbol" id="hSym">Bitcoin<span class="sym-sep"> / TetherUS</span><span class="sym-meta"> · 1m · Binance</span></div>
+      <div class="ch-price" id="hPrice">$67,420</div>
+      <div class="ptag up" id="hChg">+2.34%</div>
+      <div class="ch-stats">
+        <div class="cs"><span class="cs-lbl">24h High</span><span class="cs-val up" id="s24h">—</span></div>
+        <div class="cs"><span class="cs-lbl">24h Low</span><span class="cs-val dn" id="s24l">—</span></div>
+        <div class="cs"><span class="cs-lbl">Volume</span><span class="cs-val" id="sVol">—</span></div>
+        <div class="cs"><span class="cs-lbl">Mark</span><span class="cs-val" id="sMark">—</span></div>
+      </div>
+      <div class="tf-row">
+        <div class="sep"></div>
+        <button class="tfb on" onclick="setTF(this)">1m</button>
+        <button class="tfb" onclick="setTF(this)">3m</button>
+        <button class="tfb" onclick="setTF(this)">5m</button>
+        <button class="tfb" onclick="setTF(this)">15m</button>
+        <button class="tfb" onclick="setTF(this)">30m</button>
+        <div class="sep"></div>
+        <button class="tfb" onclick="setTF(this)">1h</button>
+        <button class="tfb" onclick="setTF(this)">2h</button>
+        <button class="tfb" onclick="setTF(this)">4h</button>
+        <button class="tfb" onclick="setTF(this)">6h</button>
+        <button class="tfb" onclick="setTF(this)">12h</button>
+        <div class="sep"></div>
+        <button class="tfb" onclick="setTF(this)">1D</button>
+        <button class="tfb" onclick="setTF(this)">3D</button>
+        <button class="tfb" onclick="setTF(this)">1W</button>
+        <button class="tfb" onclick="setTF(this)">1M</button>
+        <div class="sep"></div>
+        <button id="indicatorsBtn" onclick="openIndicatorsPanel()" title="Indicators"
+          style="display:flex;align-items:center;gap:5px;font-size:10px;padding:3px 10px 3px 8px;
+                 border-radius:4px;border:1px solid rgba(167,139,250,0.45);
+                 background:rgba(167,139,250,0.13);color:#a78bfa;cursor:pointer;
+                 font-family:'IBM Plex Mono',monospace;letter-spacing:.04em;transition:all .18s">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Indicators ▾
+        </button>
+      </div>
+    </div>
+    <!-- Lightweight Charts mounts directly into this div -->
+    <div class="cw" id="cw">
+      <div class="ma-bar" id="ma-bar"></div>
+      <div id="candleTimer" class="candle-timer-overlay" style="display:none"></div>
     </div>
   </div>
 
-  <!-- BOOK -->
-  <div class="tpanel" id="bp">
-    <div class="obw">
-      <div class="obh"><span>Price (USDT)</span><span>Qty</span><span>Total</span></div>
-      <div class="ob-asks" id="obA"></div>
-      <div class="ob-mid"><span class="live"></span><span class="ob-mp" id="obP">—</span><span class="ob-mt up" id="obT">+0.00%</span></div>
-      <div class="ob-bids" id="obB"></div>
+  <!-- RIGHT PANEL -->
+  <div class="rp">
+    <div class="tabbar">
+      <div class="tbi on" onclick="switchTab(this,'fp')">Order</div>
+      <div class="tbi" onclick="switchTab(this,'bp')">Book</div>
+    </div>
+
+    <!-- ORDER FORM -->
+    <div class="tpanel on" id="fp">
+      <div class="ofw">
+        <div class="bst">
+          <button class="bsb buy on" id="buyBtn" onclick="setSide('buy')">Buy</button>
+          <button class="bsb sell" id="sellBtn" onclick="setSide('sell')">Sell</button>
+        </div>
+        <div class="otr">
+          <button class="otb on" onclick="setOT(this,'market')">Market</button>
+          <button class="otb" onclick="setOT(this,'limit')">Limit</button>
+          <button class="otb" onclick="setOT(this,'stop')">Stop-L</button>
+        </div>
+        <div class="fg" id="lpf" style="display:none">
+          <div class="fl">Limit Price</div>
+          <div class="fw"><input type="number" class="fi" id="lp" placeholder="0.00"><span class="fu">USDT</span></div>
+        </div>
+        <div class="fg">
+          <div class="fl">Amount <span id="avShow">Avail: $100,000.00</span></div>
+          <div class="fw"><input type="number" class="fi" id="amt" placeholder="0.00000" oninput="calcT()"><span class="fu" id="aunit">BTC</span></div>
+        </div>
+        <div class="slw">
+          <input type="range" min="0" max="100" value="0" id="psl" oninput="slPct(this.value)">
+          <div class="pl">
+            <span class="plb" onclick="slPct(0)">0%</span>
+            <span class="plb" onclick="slPct(25)">25%</span>
+            <span class="plb" onclick="slPct(50)">50%</span>
+            <span class="plb" onclick="slPct(75)">75%</span>
+            <span class="plb" onclick="slPct(100)">100%</span>
+          </div>
+        </div>
+        <div class="osum">
+          <div class="sr"><span class="sl">Price</span><span class="sv" id="sPrice">Market</span></div>
+          <div class="sr"><span class="sl">Total</span><span class="sv" id="sTotal" style="color:var(--cyan)">$0.00</span></div>
+          <div class="sr"><span class="sl">Fee (0.1%)</span><span class="sv dim" id="sFee">$0.00</span></div>
+        </div>
+        <button class="pob buy" id="placeBtn" onclick="placeOrder()">BUY BTC</button>
+      </div>
+    </div>
+
+    <!-- BOOK -->
+    <div class="tpanel" id="bp">
+      <div class="obw">
+        <div class="obh"><span>Price (USDT)</span><span>Qty</span><span>Total</span></div>
+        <div class="ob-asks" id="obA"></div>
+        <div class="ob-mid"><span class="live"></span><span class="ob-mp" id="obP">—</span><span class="ob-mt up" id="obT">+0.00%</span></div>
+        <div class="ob-bids" id="obB"></div>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- BOTTOM -->
-<div class="bot">
-  <div class="bot-tabs">
-    <div class="bt on" onclick="switchBot(this,'posTab')">Positions <span class="bdg" id="posBdg">0</span></div>
-    <div class="bt" onclick="switchBot(this,'ordTab')">Open Orders <span class="bdg" id="ordBdg">0</span></div>
-    <div class="bt" onclick="switchBot(this,'histTab')">Trade History</div>
+  <!-- BOTTOM -->
+  <div class="bot">
+    <div class="bot-tabs">
+      <div class="bt on" onclick="switchBot(this,'posTab')">Positions <span class="bdg" id="posBdg">0</span></div>
+      <div class="bt" onclick="switchBot(this,'ordTab')">Open Orders <span class="bdg" id="ordBdg">0</span></div>
+      <div class="bt" onclick="switchBot(this,'histTab')">Trade History</div>
+    </div>
+    <div class="bc on" id="posTab">
+      <table><thead><tr><th>Pair</th><th>Side</th><th>Size</th><th>Entry</th><th>Mark</th><th>Unrealized PnL</th><th>ROE</th><th>Value</th><th>Action</th></tr></thead>
+      <tbody id="posTb"></tbody></table>
+    </div>
+    <div class="bc" id="ordTab">
+      <table><thead><tr><th>Time</th><th>Pair</th><th>Type</th><th>Side</th><th>Price</th><th>Amount</th><th>Action</th></tr></thead>
+      <tbody id="ordTb"></tbody></table>
+    </div>
+    <div class="bc" id="histTab">
+      <table><thead><tr><th>Time</th><th>Pair</th><th>Side</th><th>Fill Price</th><th>Amount</th><th>Total</th><th>Fee</th><th>Realized PnL</th></tr></thead>
+      <tbody id="histTb"></tbody></table>
+    </div>
   </div>
-  <div class="bc on" id="posTab">
-    <table><thead><tr><th>Pair</th><th>Side</th><th>Size</th><th>Entry</th><th>Mark</th><th>Unrealized PnL</th><th>ROE</th><th>Value</th><th>Action</th></tr></thead>
-    <tbody id="posTb"></tbody></table>
-  </div>
-  <div class="bc" id="ordTab">
-    <table><thead><tr><th>Time</th><th>Pair</th><th>Type</th><th>Side</th><th>Price</th><th>Amount</th><th>Action</th></tr></thead>
-    <tbody id="ordTb"></tbody></table>
-  </div>
-  <div class="bc" id="histTab">
-    <table><thead><tr><th>Time</th><th>Pair</th><th>Side</th><th>Fill Price</th><th>Amount</th><th>Total</th><th>Fee</th><th>Realized PnL</th></tr></thead>
-    <tbody id="histTb"></tbody></table>
-  </div>
-</div>
-</div>
+
+</div><!-- /.app -->
 
 <div class="tstack" id="tstack"></div>
 
 <!-- MOBILE BOTTOM NAV -->
 <nav id="mobNav">
   <button class="mob-tab on" id="mobTab-chart" onclick="mobSwitch('chart')">
-    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-    </svg>
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
     Chart
   </button>
   <button class="mob-tab" id="mobTab-markets" onclick="mobSwitch('markets')">
-    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-    </svg>
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
     Markets
   </button>
   <button class="mob-tab" id="mobTab-trade" onclick="mobSwitch('trade')">
-    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
-    </svg>
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
     Trade
   </button>
   <button class="mob-tab" id="mobTab-positions" onclick="mobSwitch('positions')">
-    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-    </svg>
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
     Positions
   </button>
 </nav>
 
+<!-- ── SCRIPTS — order matters ── -->
+<script src="state.js"></script>
 <script src="feed.js"></script>
 <script src="volume.js"></script>
 <script src="movingaverage.js"></script>
+<script src="stochrsi.js"></script>
 <script src="chart.js"></script>
 <script src="orderbook.js"></script>
 <script src="trading.js"></script>
+<script src="settings.js"></script>
+<script src="stocks.js"></script>
+<script src="panels.js"></script>
+<script src="ui.js"></script>
+<script src="sounds.js"></script>
+
 <script>
-// ── BG ANIMATION ──
+// ── BG ANIMATION ──────────────────────────────────────────────────────
 (()=>{
   const c=document.getElementById('bgC'),x=c.getContext('2d');
   let W,H,pts;
@@ -294,136 +293,45 @@
   window.addEventListener('resize',init);init();draw();
 })();
 
-// ── STATE ──
-const INIT = 100000;
-let S = { bal:INIT, startBal:INIT, positions:[], history:[], pair:'BTC/USDT', side:'buy', otype:'market' };
-const PAIRS = [
-  {sym:'BTC/USDT', base:'BTC', cls:'btc', p:67420,  ch:2.34,  vol:'32.4B'},
-  {sym:'ETH/USDT', base:'ETH', cls:'eth', p:3512,   ch:1.87,  vol:'14.2B'},
-  {sym:'SOL/USDT', base:'SOL', cls:'sol', p:178.4,  ch:-0.93, vol:'3.8B'},
-  {sym:'BNB/USDT', base:'BNB', cls:'bnb', p:594.2,  ch:0.56,  vol:'1.2B'},
-  {sym:'XRP/USDT', base:'XRP', cls:'xrp', p:0.624,  ch:-1.45, vol:'2.1B'},
-  {sym:'DOGE/USDT',base:'DOGE',cls:'doge',p:.1823,  ch:4.21,  vol:'890M'},
-  {sym:'ADA/USDT', base:'ADA', cls:'ada', p:.452,   ch:-0.32, vol:'560M'},
-  {sym:'AVAX/USDT',base:'AVAX',cls:'avax',p:38.94,  ch:1.12,  vol:'420M'},
-  {sym:'DOT/USDT', base:'DOT', cls:'dot', p:7.83,   ch:-2.01, vol:'310M'},
-  {sym:'LINK/USDT',base:'LINK',cls:'link',p:14.67,  ch:3.05,  vol:'280M'},
-];
-let prices = {};
-PAIRS.forEach(p => prices[p.sym] = p.p);
+// ── BOOTSTRAP ─────────────────────────────────────────────────────────
+_injectPanels();           // panels.js — insert floating panel HTML
+loadSettings();            // settings.js — restore persisted prefs
+_initAutoSave();           // settings.js — wire auto-save hooks
 
-// ── UTILS ──
-function fp(n){if(!n&&n!==0)return'—';if(n>=10000)return n.toLocaleString('en',{maximumFractionDigits:0});if(n>=1000)return n.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});if(n>=100)return n.toFixed(2);if(n>=1)return n.toFixed(3);return n.toFixed(4);}
-function fu(n){return'$'+Math.abs(n).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});}
-
-// ── SIDEBAR ──
-function renderPairs(f=''){
-  const el=document.getElementById('pairList');
-  const list=PAIRS.filter(p=>p.sym.toLowerCase().includes(f.toLowerCase())||p.base.toLowerCase().includes(f.toLowerCase()));
-  el.innerHTML=list.map(p=>`<div class="pi ${p.sym===S.pair?'on':''}" onclick="selPair('${p.sym}')">
-    <div class="ci"><div class="coin ${p.cls}">${p.base.slice(0,3)}</div><div><div class="p-base">${p.base}</div><div class="p-quote">USDT</div></div></div>
-    <div class="p-nums"><div class="p-price ${p.ch>=0?'up':'dn'}">$${fp(prices[p.sym])}</div><div class="p-chg ${p.ch>=0?'up':'dn'}">${p.ch>=0?'+':''}${p.ch.toFixed(2)}%</div></div>
-  </div>`).join('');
-}
-
-function selPair(sym){
-  S.pair=sym;
-  const p=PAIRS.find(x=>x.sym===sym);
-  document.getElementById('hSym').innerHTML=p.base+'<span>/USDT</span>';
-  document.getElementById('aunit').textContent=p.base;
-  document.getElementById('placeBtn').textContent=(S.side==='buy'?'BUY ':'SELL ')+p.base;
-  genCandles();renderPairs();updateHdr();renderBook();
-}
-
-// ── UI ──
-function switchTab(el,id){document.querySelectorAll('.tbi').forEach(t=>t.classList.remove('on'));document.querySelectorAll('.tpanel').forEach(p=>p.classList.remove('on'));el.classList.add('on');document.getElementById(id).classList.add('on');}
-function switchBot(el,id){document.querySelectorAll('.bt').forEach(t=>t.classList.remove('on'));document.querySelectorAll('.bc').forEach(c=>c.classList.remove('on'));el.classList.add('on');document.getElementById(id).classList.add('on');}
-function setTF(el){
-  document.querySelectorAll('.tfb').forEach(b=>b.classList.remove('on'));
-  el.classList.add('on');
-  currentTF=el.textContent.trim();
-  genCandles();
-}
-function toast(msg,type='info'){const s=document.getElementById('tstack'),d=document.createElement('div');d.className=`ti ${type}`;d.textContent=msg;s.appendChild(d);requestAnimationFrame(()=>requestAnimationFrame(()=>d.classList.add('show')));setTimeout(()=>{d.classList.remove('show');setTimeout(()=>d.remove(),400);},3400);}
-function resetAcc(){if(!confirm('Reset to $100,000?'))return;S.bal=INIT;S.startBal=INIT;S.positions=[];S.history=[];renderPos();renderHist();updateHdr();toast('Account reset — $100,000 ready','info');}
-
-// ── LOOP — price line update only; chart renders internally ──
-let tick=0;
-function loop(){
-  tick++;
-  if(tick%2===0)renderPairs();
-  if(tick%5===0){renderBook();renderPos();}
-  updateHdr();
-  updatePriceLine();
-}
-
-// ── INIT ──
+_updateFavCount();
 renderPairs();
-selPair('BTC/USDT');
+selPair(S.pair);           // triggers chart + kline load
 renderPos();
 renderHist();
-startFeed();
-setInterval(loop, 500);
+startFeed();               // feed.js — open WebSocket
+loadAllPairs();            // state.js — fetch full Binance pair list
 
-// ── MOBILE NAV ──
-const MOB_VIEWS = {
-  chart:     '.main',
-  markets:   '.sidebar',
-  trade:     '.rp',
-  positions: '.bot',
-};
-let _mobCurrent = 'chart';
+setInterval(updateCandleTimer, 1000);
+updateCandleTimer();
+setInterval(loop, 750);
 
-function mobSwitch(view) {
-  if (window.innerWidth > 768) return;
-  Object.values(MOB_VIEWS).forEach(sel => {
-    const el = document.querySelector(sel);
-    if (el) el.classList.remove('mob-active');
-  });
-  document.querySelectorAll('.mob-tab').forEach(t => t.classList.remove('on'));
-  const panel = document.querySelector(MOB_VIEWS[view]);
-  if (panel) panel.classList.add('mob-active');
-  const tab = document.getElementById('mobTab-' + view);
-  if (tab) tab.classList.add('on');
-  _mobCurrent = view;
-  if (view === 'chart' && typeof lwChart !== 'undefined' && lwChart) {
-    setTimeout(() => {
-      const cw = document.getElementById('cw');
-      if (cw) lwChart.resize(cw.clientWidth, cw.clientHeight);
-    }, 30);
-  }
-}
+_restoreStochRSIVisibility();   // settings.js
+_syncIndToggles();               // panels.js
 
-function _initMobile() {
-  if (window.innerWidth > 768) return;
-  mobSwitch('chart');
-}
-
-// When selecting a pair on mobile, jump to chart view
+// Mobile: intercept selPair to auto-switch to chart view
 const _origSelPair = selPair;
 selPair = function(sym) {
   _origSelPair(sym);
   if (window.innerWidth <= 768) mobSwitch('chart');
 };
 
-window.addEventListener('resize', () => {
-  if (window.innerWidth > 768) {
-    document.querySelectorAll('.mob-active').forEach(el => el.classList.remove('mob-active'));
-  } else {
-    mobSwitch(_mobCurrent);
-  }
-});
+// Mobile: intercept selStock to auto-switch to chart view
+const _origSelStock = selStock;
+selStock = function(sym) {
+  _origSelStock(sym);
+  if (window.innerWidth <= 768) mobSwitch('chart');
+};
 
 _initMobile();
 
-// Close MA settings panel when clicking outside
-document.addEventListener('click', e => {
-  const panel = document.getElementById('maSettingsPanel');
-  const btn   = document.getElementById('maToggle');
-  if (panel && panel.style.display !== 'none' && !panel.contains(e.target) && !btn.contains(e.target)) {
-    panel.style.display = 'none';
-  }
-});
+// Initialise market status badge
+updateMarketStatusBadge();
+setInterval(updateMarketStatusBadge, 30000);
 </script>
 </body>
 </html>
