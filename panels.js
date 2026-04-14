@@ -238,9 +238,125 @@ function _injectPanels() {
       <button onclick="resetVolumeSettings()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#4a5568;border-radius:6px;font-size:11px;padding:8px 12px;cursor:pointer;font-family:inherit" title="Restore factory defaults">Defaults</button>
       <button onclick="_cancelVolumeSettings()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#4a5568;border-radius:6px;font-size:11px;padding:8px 12px;cursor:pointer;font-family:inherit" title="Revert to settings before opening">Cancel</button>
     </div>
+  </div>
+
+  <!-- App Settings Panel -->
+  <div id="appSettingsPanel" onclick="event.stopPropagation()" style="display:none;position:fixed;z-index:1010;width:290px;
+    flex-direction:column;gap:0;
+    background:rgba(10,14,28,0.98);border:1px solid rgba(255,255,255,0.13);
+    border-radius:10px;padding:14px 16px 16px;
+    box-shadow:0 16px 48px rgba(0,0,0,0.7);backdrop-filter:blur(20px);
+    font-family:'IBM Plex Mono',monospace;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:7px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span style="font-size:11px;font-weight:600;color:#e2e8f0;letter-spacing:.8px;text-transform:uppercase">Settings</span>
+      </div>
+      <button onclick="closeAppSettings()" style="font-size:13px;line-height:1;padding:2px 8px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#94a3b8;cursor:pointer;font-family:inherit">&#x2715;</button>
+    </div>
+
+    <div style="font-size:9px;color:#4a5568;text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:10px">&#x1F508; Sound</div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <span style="font-size:11px;color:#c4cdd8">Enable Sounds</span>
+      <button class="ind-tog" id="as-soundEnabled"
+        onclick="this.classList.toggle('on');_liveApplySoundSettings()"
+        style="position:relative;width:32px;height:17px;border-radius:9px;
+               background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.14);
+               cursor:pointer;transition:background .2s,border-color .2s;padding:0;flex-shrink:0">
+        <span class="ind-tog-knob"></span>
+      </button>
+    </div>
+
+    <div id="as-volumeRow">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:11px;color:#c4cdd8">Volume</span>
+        <span id="as-volumeVal" style="font-size:10px;color:#94a3b8;font-family:'IBM Plex Mono',monospace">50%</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>
+        <input type="range" id="as-volume" min="0" max="100" value="50" step="1"
+          oninput="document.getElementById('as-volumeVal').textContent=this.value+'%';_liveApplySoundSettings()"
+          style="flex:1;accent-color:#a78bfa">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      </div>
+      <button onclick="if(typeof soundInfo==='function')soundInfo()"
+        style="margin-top:9px;width:100%;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.25);
+               color:#a78bfa;border-radius:5px;font-size:10px;padding:6px;cursor:pointer;
+               font-family:'IBM Plex Mono',monospace;letter-spacing:.4px">
+        &#x25B6; Test sound
+      </button>
+    </div>
+
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:flex-end">
+      <button onclick="_resetAppSoundSettings()"
+        style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
+               color:#4a5568;border-radius:6px;font-size:11px;padding:6px 14px;
+               cursor:pointer;font-family:inherit">Defaults</button>
+    </div>
   </div>`;
 
   document.body.appendChild(wrapper);
+}
+
+// ── APP SETTINGS PANEL ────────────────────────────────────────────────
+function openAppSettings() {
+  const panel = document.getElementById('appSettingsPanel');
+  if (!panel) return;
+  if (panel.style.display === 'flex') { closeAppSettings(); return; }
+
+  // Read current state from sounds.js public getters
+  const enabled = typeof getSoundEnabled === 'function' ? getSoundEnabled() : true;
+  const volume  = typeof getSoundVolume  === 'function' ? getSoundVolume()  : 0.5;
+
+  const tog = document.getElementById('as-soundEnabled');
+  if (tog) tog.classList.toggle('on', enabled);
+  const slider = document.getElementById('as-volume');
+  if (slider) slider.value = Math.round(volume * 100);
+  const label = document.getElementById('as-volumeVal');
+  if (label) label.textContent = Math.round(volume * 100) + '%';
+  _syncSoundRowOpacity();
+
+  const btn = document.getElementById('settingsNavBtn');
+  const r   = btn ? btn.getBoundingClientRect() : { bottom: 52, right: window.innerWidth - 16 };
+  panel.style.top  = (r.bottom + 8) + 'px';
+  panel.style.left = Math.max(8, r.right - 290) + 'px';
+  panel.style.display = 'flex';
+}
+
+function closeAppSettings() {
+  const p = document.getElementById('appSettingsPanel');
+  if (p) p.style.display = 'none';
+}
+
+function _liveApplySoundSettings() {
+  const enabled = document.getElementById('as-soundEnabled').classList.contains('on');
+  const volume  = parseInt(document.getElementById('as-volume').value) / 100;
+  if (typeof setSoundEnabled === 'function') setSoundEnabled(enabled);
+  if (typeof setSoundVolume  === 'function') setSoundVolume(volume);
+  _syncSoundRowOpacity();
+  if (typeof saveSettings === 'function') saveSettings();
+}
+
+function _syncSoundRowOpacity() {
+  const enabled = document.getElementById('as-soundEnabled').classList.contains('on');
+  const row = document.getElementById('as-volumeRow');
+  if (row) row.style.opacity = enabled ? '1' : '0.38';
+}
+
+function _resetAppSoundSettings() {
+  if (typeof setSoundEnabled === 'function') setSoundEnabled(true);
+  if (typeof setSoundVolume  === 'function') setSoundVolume(0.5);
+  const tog = document.getElementById('as-soundEnabled');
+  if (tog) tog.classList.add('on');
+  const slider = document.getElementById('as-volume');
+  if (slider) slider.value = 50;
+  const label = document.getElementById('as-volumeVal');
+  if (label) label.textContent = '50%';
+  _syncSoundRowOpacity();
+  if (typeof saveSettings === 'function') saveSettings();
+  if (typeof toast        === 'function') toast('Sound settings reset', 'info');
 }
 
 // ── INDICATORS PANEL ──────────────────────────────────────────────────
@@ -366,11 +482,17 @@ function resetStochRSISettings() {
 
 // ── OUTSIDE CLICK — close all panels ─────────────────────────────────
 document.addEventListener('click', e => {
-  const maPanel  = document.getElementById('maSettingsPanel');
-  const srPanel  = document.getElementById('stochRsiSettingsPanel');
-  const volPanel = document.getElementById('volSettingsPanel');
-  const indPanel = document.getElementById('indicatorsPanel');
-  const indBtn   = document.getElementById('indicatorsBtn');
+  const maPanel   = document.getElementById('maSettingsPanel');
+  const srPanel   = document.getElementById('stochRsiSettingsPanel');
+  const volPanel  = document.getElementById('volSettingsPanel');
+  const indPanel  = document.getElementById('indicatorsPanel');
+  const indBtn    = document.getElementById('indicatorsBtn');
+  const appPanel  = document.getElementById('appSettingsPanel');
+  const settBtn   = document.getElementById('settingsNavBtn');
+
+  if (appPanel && appPanel.style.display !== 'none' &&
+      !appPanel.contains(e.target) && settBtn && !settBtn.contains(e.target))
+    appPanel.style.display = 'none';
 
   if (maPanel && maPanel.style.display !== 'none' && !maPanel.contains(e.target))
     maPanel.style.display = 'none';

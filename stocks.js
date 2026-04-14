@@ -1,10 +1,14 @@
-// ── STOCKS — Finnhub live feed (~300 stocks) ──
-// WebSocket real-time ticks + REST candle history
-// Mirrors feed.js architecture — chart.js / indicators work unchanged.
+// ── STOCKS ──
+// Candles + quotes : Yahoo Finance (no key, CORS-friendly, session-aligned)
+// Live price ticks : Finnhub WebSocket (keeps real-time updates)
 
 const FINNHUB_KEY  = 'd7e050hr01qkuebig1egd7e050hr01qkuebig1f0';
 const FINNHUB_WS   = `wss://ws.finnhub.io?token=${FINNHUB_KEY}`;
+
 const FINNHUB_REST = 'https://finnhub.io/api/v1';
+
+// Strip exchange prefix for display (e.g. "LSE:SHEL" → "SHEL")
+// kept for renderStockPairs / selStock which call _dispSym/_exchLabel
 
 const STOCK_WATCHLIST = [
   // Tech: Mega-cap
@@ -381,6 +385,85 @@ const STOCK_WATCHLIST = [
   { sym:'TQQQ',  name:'QQQ Bull 3x ETF',       sector:'ETFs' },
   { sym:'SQQQ',  name:'QQQ Bear 3x ETF',       sector:'ETFs' },
   { sym:'SPXL',  name:'S&P 500 Bull 3x ETF',   sector:'ETFs' },
+  // ── European: UK (LSE) ───────────────────────────────────────────────
+  { sym:'LSE:SHEL',  name:'Shell',                 sector:'Europe – UK' },
+  { sym:'LSE:BP',    name:'BP',                    sector:'Europe – UK' },
+  { sym:'LSE:HSBA',  name:'HSBC',                  sector:'Europe – UK' },
+  { sym:'LSE:AZN',   name:'AstraZeneca',           sector:'Europe – UK' },
+  { sym:'LSE:GSK',   name:'GSK',                   sector:'Europe – UK' },
+  { sym:'LSE:ULVR',  name:'Unilever',              sector:'Europe – UK' },
+  { sym:'LSE:DGE',   name:'Diageo',                sector:'Europe – UK' },
+  { sym:'LSE:RIO',   name:'Rio Tinto',             sector:'Europe – UK' },
+  { sym:'LSE:BHP',   name:'BHP Group',             sector:'Europe – UK' },
+  { sym:'LSE:LLOY',  name:'Lloyds Banking Group',  sector:'Europe – UK' },
+  { sym:'LSE:BARC',  name:'Barclays',              sector:'Europe – UK' },
+  { sym:'LSE:STAN',  name:'Standard Chartered',    sector:'Europe – UK' },
+  { sym:'LSE:VOD',   name:'Vodafone',              sector:'Europe – UK' },
+  { sym:'LSE:BA',    name:'BAE Systems',           sector:'Europe – UK' },
+  { sym:'LSE:RR',    name:'Rolls-Royce',           sector:'Europe – UK' },
+  { sym:'LSE:NG',    name:'National Grid',         sector:'Europe – UK' },
+  { sym:'LSE:SSE',   name:'SSE',                   sector:'Europe – UK' },
+  { sym:'LSE:EXPN',  name:'Experian',              sector:'Europe – UK' },
+  { sym:'LSE:REL',   name:'RELX',                  sector:'Europe – UK' },
+  { sym:'LSE:BATS',  name:'British American Tobacco', sector:'Europe – UK' },
+  // ── European: Germany (XETRA) ─────────────────────────────────────────
+  { sym:'XETRA:SAP',  name:'SAP',                  sector:'Europe – DE' },
+  { sym:'XETRA:SIE',  name:'Siemens',              sector:'Europe – DE' },
+  { sym:'XETRA:ALV',  name:'Allianz',              sector:'Europe – DE' },
+  { sym:'XETRA:MUV2', name:'Munich Re',            sector:'Europe – DE' },
+  { sym:'XETRA:DTE',  name:'Deutsche Telekom',     sector:'Europe – DE' },
+  { sym:'XETRA:BMW',  name:'BMW',                  sector:'Europe – DE' },
+  { sym:'XETRA:MBG',  name:'Mercedes-Benz',        sector:'Europe – DE' },
+  { sym:'XETRA:VOW3', name:'Volkswagen',           sector:'Europe – DE' },
+  { sym:'XETRA:BAS',  name:'BASF',                 sector:'Europe – DE' },
+  { sym:'XETRA:BAYN', name:'Bayer',                sector:'Europe – DE' },
+  { sym:'XETRA:EOAN', name:'E.ON',                 sector:'Europe – DE' },
+  { sym:'XETRA:RWE',  name:'RWE',                  sector:'Europe – DE' },
+  { sym:'XETRA:DB1',  name:'Deutsche Börse',       sector:'Europe – DE' },
+  { sym:'XETRA:DBK',  name:'Deutsche Bank',        sector:'Europe – DE' },
+  { sym:'XETRA:MRK',  name:'Merck KGaA',           sector:'Europe – DE' },
+  { sym:'XETRA:ADS',  name:'Adidas',               sector:'Europe – DE' },
+  { sym:'XETRA:HEN3', name:'Henkel',               sector:'Europe – DE' },
+  { sym:'XETRA:HEI',  name:'HeidelbergMaterials',  sector:'Europe – DE' },
+  // ── European: France (EURONEXT) ───────────────────────────────────────
+  { sym:'EURONEXT:MC',    name:'LVMH',             sector:'Europe – FR' },
+  { sym:'EURONEXT:OR',    name:"L'Oréal",          sector:'Europe – FR' },
+  { sym:'EURONEXT:TTE',   name:'TotalEnergies',    sector:'Europe – FR' },
+  { sym:'EURONEXT:SAN',   name:'Sanofi',           sector:'Europe – FR' },
+  { sym:'EURONEXT:AIR',   name:'Airbus',           sector:'Europe – FR' },
+  { sym:'EURONEXT:BNP',   name:'BNP Paribas',      sector:'Europe – FR' },
+  { sym:'EURONEXT:ACA',   name:'Crédit Agricole',  sector:'Europe – FR' },
+  { sym:'EURONEXT:CS',    name:'AXA',              sector:'Europe – FR' },
+  { sym:'EURONEXT:SU',    name:'Schneider Electric',sector:'Europe – FR' },
+  { sym:'EURONEXT:CAP',   name:'Capgemini',        sector:'Europe – FR' },
+  { sym:'EURONEXT:DG',    name:'Vinci',            sector:'Europe – FR' },
+  { sym:'EURONEXT:SGO',   name:'Saint-Gobain',     sector:'Europe – FR' },
+  { sym:'EURONEXT:RI',    name:'Pernod Ricard',    sector:'Europe – FR' },
+  { sym:'EURONEXT:KER',   name:'Kering',           sector:'Europe – FR' },
+  { sym:'EURONEXT:HO',    name:'Thales',           sector:'Europe – FR' },
+  // ── European: Switzerland (SIX) ──────────────────────────────────────
+  { sym:'SIX:NESN',  name:'Nestlé',                sector:'Europe – CH' },
+  { sym:'SIX:ROG',   name:'Roche',                 sector:'Europe – CH' },
+  { sym:'SIX:NOVN',  name:'Novartis',              sector:'Europe – CH' },
+  { sym:'SIX:ABBN',  name:'ABB',                   sector:'Europe – CH' },
+  { sym:'SIX:UBSG',  name:'UBS Group',             sector:'Europe – CH' },
+  { sym:'SIX:CSGN',  name:'Credit Suisse (CS Group)', sector:'Europe – CH' },
+  { sym:'SIX:ZURN',  name:'Zurich Insurance',      sector:'Europe – CH' },
+  { sym:'SIX:SREN',  name:'Swiss Re',              sector:'Europe – CH' },
+  { sym:'SIX:LONN',  name:'Lonza Group',           sector:'Europe – CH' },
+  { sym:'SIX:CFR',   name:'Richemont',             sector:'Europe – CH' },
+  { sym:'SIX:SIKA',  name:'Sika',                  sector:'Europe – CH' },
+  // ── European: Netherlands / Scandinavia / Other ───────────────────────
+  { sym:'EURONEXT:ASML', name:'ASML',              sector:'Europe – NL' },
+  { sym:'EURONEXT:PHIA', name:'Philips',           sector:'Europe – NL' },
+  { sym:'EURONEXT:HEIA', name:'Heineken',          sector:'Europe – NL' },
+  { sym:'EURONEXT:ING',  name:'ING Group',         sector:'Europe – NL' },
+  { sym:'EURONEXT:RAND', name:'Randstad',          sector:'Europe – NL' },
+  { sym:'NASDAQ:ERICB',  name:'Ericsson',          sector:'Europe – SE' },
+  { sym:'NASDAQ:NOKSEK', name:'Nokia',             sector:'Europe – FI' },
+  { sym:'XETRA:NOKIA',   name:'Nokia (Xetra)',     sector:'Europe – FI' },
+  { sym:'SIX:GIVN',      name:'Givaudan',          sector:'Europe – CH' },
+  { sym:'EURONEXT:EL',   name:'EssilorLuxottica',  sector:'Europe – FR' },
 ];
 
 // Deduplicate
@@ -416,6 +499,13 @@ function updateMarketStatusBadge() {
   b.className   = 'msw-badge '+(open?'open':'closed');
 }
 
+// Convert Yahoo interval string to milliseconds (live tick fallback)
+function _stockResMs(interval) {
+  const map = {'1m':60000,'2m':120000,'5m':300000,'15m':900000,'30m':1800000,
+               '60m':3600000,'1h':3600000,'1d':86400000,'1wk':604800000,'1mo':2592000000};
+  return map[interval] || 60000;
+}
+
 // WebSocket
 let _stockWs=null, _stockConnected=false, _stockReconTimer=null, _subscribedSyms=new Set();
 
@@ -437,10 +527,19 @@ function startStockFeed() {
       prices[sym]=price; pair.p=price;
       if(pair._open>0) pair.ch=((price-pair._open)/pair._open)*100;
       if(stockMode&&sym===S.pair&&candles.length){
-        const iMs=TF_MS[currentTF]||60000, nowMs=Date.now();
-        const cps=Math.floor(nowMs/iMs)*iMs, last=candles.at(-1);
-        if(last.t<cps){candles.push({t:cps,o:price,h:price,l:price,c:price,v:trade.v||0});}
-        else{last.c=price;last.h=Math.max(last.h,price);last.l=Math.min(last.l,price);last.v=(last.v||0)+(trade.v||0);}
+        const last = candles.at(-1);
+        const cfg  = FINNHUB_TF_CFG[currentTF] || FINNHUB_TF_CFG['1D'];
+        const iMs  = candles.length > 1
+          ? candles.at(-1).t - candles.at(-2).t
+          : (cfg.group ? cfg.group * 1000 : _stockResMs(cfg.interval));
+        const nowMs = Date.now();
+        if(nowMs >= last.t + iMs){
+          const newT = last.t + iMs;
+          candles.push({t:newT, o:price, h:price, l:price, c:price, v:trade.v||0});
+        } else {
+          last.c=price; last.h=Math.max(last.h,price); last.l=Math.min(last.l,price);
+          last.v=(last.v||0)+(trade.v||0);
+        }
         updateLiveTick(sym);
       }
     });
@@ -468,98 +567,189 @@ function _unsubscribeStock(sym){
   _subscribedSyms.delete(sym);
 }
 
-// Batch quote loader
-// Finnhub free tier: 60 req/min. We use BATCH_SIZE parallel fetches every
-// BATCH_DELAY ms so we stay safely under the limit (5 req / 5 500 ms ≈ 54/min).
-let _quoteAbort=null;
-const _QUOTE_BATCH   = 5;      // parallel requests per batch
-const _QUOTE_DELAY   = 5500;   // ms between batches
-const _QUOTE_RETRIES = 2;      // max retries on 429
+// ── Batch quote loader — Finnhub REST /quote ─────────────────────────
+// Finnhub free tier: 60 calls/min. We stagger with a small delay between
+// batches and cache results so we don't hammer on every render.
+let _quoteAbort = null;
+const _QUOTE_BATCH = 10;   // Finnhub is per-symbol, so batch = parallel burst
 
-function _updateStockRow(sym){
-  const el=document.getElementById('stockPairList'); if(!el) return;
-  const row=el.querySelector('[data-stock-sym="'+sym+'"]'); if(!row) return;
-  const pair=STOCK_PAIRS.find(p=>p.sym===sym); if(!pair) return;
-  const pr=prices[sym]||0, ch=pair.ch||0, cls=ch>=0?'up':'dn';
-  const pe=row.querySelector('.p-price'), ce=row.querySelector('.p-chg');
-  if(pe){pe.textContent='$'+(pr>0?fp(pr):'--'); pe.className='p-price '+cls;}
-  if(ce){ce.textContent=(ch>=0?'+':'')+ch.toFixed(2)+'%'; ce.className='p-chg '+cls;}
+function _updateStockRow(sym) {
+  const el  = document.getElementById('stockPairList'); if (!el) return;
+  const row = el.querySelector('[data-stock-sym="' + sym + '"]'); if (!row) return;
+  const pair = STOCK_PAIRS.find(p => p.sym === sym); if (!pair) return;
+  const pr = prices[sym] || 0, ch = pair.ch || 0, cls = ch >= 0 ? 'up' : 'dn';
+  const pe = row.querySelector('.p-price'), ce = row.querySelector('.p-chg');
+  if (pe) { pe.textContent = '$' + (pr > 0 ? fp(pr) : '--'); pe.className = 'p-price ' + cls; }
+  if (ce) { ce.textContent = (ch >= 0 ? '+' : '') + ch.toFixed(2) + '%'; ce.className = 'p-chg ' + cls; }
 }
 
-async function _fetchOneQuote(pair, signal, attempt=0){
-  const res=await fetch(
-    `${FINNHUB_REST}/quote?symbol=${encodeURIComponent(pair.sym)}&token=${FINNHUB_KEY}`,
-    {signal}
-  );
-  if(res.status===429){
-    // Rate-limited — back off exponentially then retry
-    if(attempt<_QUOTE_RETRIES){
-      await new Promise(r=>setTimeout(r, 20000*(attempt+1)));
-      if(signal.aborted) return;
-      return _fetchOneQuote(pair, signal, attempt+1);
-    }
-    console.warn('Finnhub 429 giving up on', pair.sym);
-    return;
+async function _fetchFinnhubQuote(pair, signal) {
+  // Only fetch US stocks (no exchange prefix) — Finnhub free tier doesn't cover European exchanges
+  if (pair.sym.includes(':')) return;
+  const url = `${FINNHUB_REST}/quote?symbol=${encodeURIComponent(pair.sym)}&token=${FINNHUB_KEY}`;
+  try {
+    const resp = await fetch(url, { signal });
+    if (!resp.ok) return;
+    const q = await resp.json();
+    // Finnhub returns { c: current, d: change, dp: %change, h: high, l: low, o: open, pc: prevClose }
+    if (!q || !q.c) return;
+    pair.p      = q.c;
+    pair.ch     = q.dp || 0;
+    pair.high24 = q.h  || q.c;
+    pair.low24  = q.l  || q.c;
+    pair._open  = q.o  || q.c;
+    prices[pair.sym] = q.c;
+    _updateStockRow(pair.sym);
+    if (pair.sym === S.pair && typeof updateHdr === 'function') updateHdr();
+  } catch (err) {
+    if (err.name === 'AbortError') throw err;
+    // silently skip failures for individual symbols
   }
-  if(!res.ok) return;
-  const q=await res.json();
-  if(!q||!q.c) return;
-  pair.p=q.c; pair.ch=q.dp||0; pair.high24=q.h||q.c; pair.low24=q.l||q.c; pair._open=q.o||q.c;
-  prices[pair.sym]=q.c;
-  _updateStockRow(pair.sym);
 }
 
-async function loadStockQuotes(){
-  if(_quoteAbort) _quoteAbort.abort();
-  _quoteAbort=new AbortController();
-  const signal=_quoteAbort.signal;
+// Fetch a single stock quote immediately — called by selStock so the
+// header shows a real price without waiting for the full batch scan.
+async function _fetchQuoteNow(sym) {
+  const pair = STOCK_PAIRS.find(p => p.sym === sym);
+  if (!pair || sym.includes(':')) return;
+  const url = `${FINNHUB_REST}/quote?symbol=${encodeURIComponent(sym)}&token=${FINNHUB_KEY}`;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return;
+    const q = await resp.json();
+    if (!q || !q.c) return;
+    pair.p      = q.c;
+    pair.ch     = q.dp || 0;
+    pair.high24 = q.h  || q.c;
+    pair.low24  = q.l  || q.c;
+    pair._open  = q.o  || q.c;
+    prices[sym] = q.c;
+    _updateStockRow(sym);
+    if (sym === S.pair && typeof updateHdr === 'function') updateHdr();
+  } catch (_) {}
+}
 
-  for(let i=0;i<STOCK_PAIRS.length;i+=_QUOTE_BATCH){
-    if(signal.aborted||!stockMode) return;
-    const batch=STOCK_PAIRS.slice(i, i+_QUOTE_BATCH);
-    try{
-      await Promise.all(batch.map(pair=>_fetchOneQuote(pair, signal)));
-    }catch(err){
-      if(err.name==='AbortError') return;
-      // Non-abort errors (network): log and continue
-      console.warn('loadStockQuotes batch error:', err);
+async function loadStockQuotes() {
+  if (_quoteAbort) _quoteAbort.abort();
+  _quoteAbort = new AbortController();
+  const signal = _quoteAbort.signal;
+
+  // Only load US stocks to respect free-tier rate limits
+  const usPairs = STOCK_PAIRS.filter(p => !p.sym.includes(':'));
+
+  for (let i = 0; i < usPairs.length; i += _QUOTE_BATCH) {
+    if (signal.aborted || !stockMode) return;
+    const batch = usPairs.slice(i, i + _QUOTE_BATCH);
+    try {
+      await Promise.all(batch.map(p => _fetchFinnhubQuote(p, signal)));
+    } catch (err) {
+      if (err.name === 'AbortError') return;
     }
-    if(i+_QUOTE_BATCH<STOCK_PAIRS.length){
-      await new Promise(r=>setTimeout(r, _QUOTE_DELAY));
+    // ~10 req/s — stay under 60/min free limit
+    if (i + _QUOTE_BATCH < usPairs.length) await new Promise(r => setTimeout(r, 700));
+  }
+  _quotesLoaded = true;
+  if (typeof renderStockPairs === 'function') renderStockPairs();
+}
+
+// ── Finnhub candle resolution mapping ────────────────────────────────
+// Finnhub supported resolutions: 1,5,15,30,60,D,W,M
+// For unsupported resolutions we fetch a finer resolution and aggregate.
+const FINNHUB_TF_CFG = {
+  '1m':  { res:'1',  days:5     },
+  '3m':  { res:'1',  days:5,   group:180   },
+  '5m':  { res:'5',  days:30   },
+  '15m': { res:'15', days:60   },
+  '30m': { res:'30', days:60   },
+  '1h':  { res:'60', days:365  },
+  '2h':  { res:'60', days:365, group:7200  },
+  '4h':  { res:'60', days:365, group:14400 },
+  '6h':  { res:'60', days:365, group:21600 },
+  '12h': { res:'60', days:365, group:43200 },
+  '1D':  { res:'D',  days:730  },
+  '3D':  { res:'D',  days:730, group:259200 },
+  '1W':  { res:'W',  days:1825 },
+  '1M':  { res:'M',  days:3650 },
+};
+
+// Aggregate candles into coarser buckets (for e.g. 1m→3m, 1h→4h etc.)
+function _aggregateCandles(raw, groupSecs) {
+  if (!groupSecs || !raw.length) return raw;
+  const out    = [];
+  const anchor = Math.floor(raw[0].t / 1000);
+  let bucket   = null;
+  for (const c of raw) {
+    const tSec   = Math.floor(c.t / 1000);
+    const bIdx   = Math.floor((tSec - anchor) / groupSecs);
+    const bStart = anchor + bIdx * groupSecs;
+    if (!bucket || bucket.bStart !== bStart) {
+      if (bucket) out.push(bucket.c);
+      bucket = { bStart, c: { t: bStart * 1000, o: c.o, h: c.h, l: c.l, c: c.c, v: c.v } };
+    } else {
+      bucket.c.h  = Math.max(bucket.c.h, c.h);
+      bucket.c.l  = Math.min(bucket.c.l, c.l);
+      bucket.c.c  = c.c;
+      bucket.c.v += c.v;
     }
   }
-  _quotesLoaded=true;
-  if(typeof renderStockPairs==='function') renderStockPairs();
+  if (bucket) out.push(bucket.c);
+  return out;
 }
 
-// Candle loader
-const STOCK_TF_RES={'1m':'1','3m':'5','5m':'5','15m':'15','30m':'30','1h':'60','2h':'60','4h':'60','6h':'60','12h':'60','1D':'D','3D':'D','1W':'W','1M':'M'};
-const STOCK_TF_DAYS={'1m':2,'3m':4,'5m':5,'15m':10,'30m':20,'1h':60,'2h':90,'4h':180,'6h':180,'12h':365,'1D':730,'3D':730,'1W':1460,'1M':1825};
-let _stockKlineAbort=null;
+let _stockKlineAbort = null;
 
-async function loadStockKlines(sym,tf){
-  if(_stockKlineAbort) _stockKlineAbort.abort();
-  _stockKlineAbort=new AbortController();
-  const signal=_stockKlineAbort.signal;
-  const res=STOCK_TF_RES[tf]||'D', days=STOCK_TF_DAYS[tf]||60;
-  const to=Math.floor(Date.now()/1000), from=to-days*86400;
-  try{
-    const resp=await fetch(`${FINNHUB_REST}/stock/candle?symbol=${encodeURIComponent(sym)}&resolution=${res}&from=${from}&to=${to}&token=${FINNHUB_KEY}`,{signal});
-    if(signal.aborted||sym!==S.pair) return;
-    const data=await resp.json();
-    if(signal.aborted||sym!==S.pair) return;
-    if(!data||data.s==='no_data'||!Array.isArray(data.t)||!data.t.length){_stockFallbackSim(sym);return;}
-    candles=data.t.map((t,i)=>({t:t*1000,o:data.o[i],h:data.h[i],l:data.l[i],c:data.c[i],v:data.v[i]}));
-    if(candles.length){
-      const last=candles.at(-1).c; prices[sym]=last;
-      const pair=STOCK_PAIRS.find(p=>p.sym===sym);
-      if(pair){pair.p=last;if(!pair._open)pair._open=candles[0].o;}
+async function loadStockKlines(sym, tf) {
+  if (_stockKlineAbort) _stockKlineAbort.abort();
+  _stockKlineAbort = new AbortController();
+  const signal = _stockKlineAbort.signal;
+
+  // European stocks: Finnhub free tier doesn't have candles for them — use sim
+  if (sym.includes(':')) { _stockFallbackSim(sym); return; }
+
+  const cfg  = FINNHUB_TF_CFG[tf] || FINNHUB_TF_CFG['1D'];
+  const now  = Math.floor(Date.now() / 1000);
+  const from = now - cfg.days * 86400;
+  const url  = `${FINNHUB_REST}/stock/candle?symbol=${encodeURIComponent(sym)}&resolution=${cfg.res}&from=${from}&to=${now}&token=${FINNHUB_KEY}`;
+
+  try {
+    const resp = await fetch(url, { signal });
+    if (signal.aborted || sym !== S.pair) return;
+    if (!resp.ok) { _stockFallbackSim(sym); return; }
+    const data = await resp.json();
+    if (signal.aborted || sym !== S.pair) return;
+
+    // Finnhub returns { s:'ok', t:[], o:[], h:[], l:[], c:[], v:[] }
+    if (!data || data.s !== 'ok' || !Array.isArray(data.t) || !data.t.length) {
+      console.warn('Finnhub no data for', sym, data?.s);
+      _stockFallbackSim(sym);
+      return;
+    }
+
+    let raw = [];
+    for (let i = 0; i < data.t.length; i++) {
+      const o = data.o[i], h = data.h[i], l = data.l[i], c = data.c[i], v = data.v[i];
+      if (o == null || c == null) continue;
+      raw.push({ t: data.t[i] * 1000, o, h, l, c, v: v || 0 });
+    }
+    if (!raw.length) { _stockFallbackSim(sym); return; }
+
+    candles = _aggregateCandles(raw, cfg.group || 0);
+
+    if (candles.length) {
+      const last = candles.at(-1).c;
+      prices[sym] = last;
+      const pair = STOCK_PAIRS.find(p => p.sym === sym);
+      if (pair) {
+        pair.p = last;
+        if (!pair._open) pair._open = raw[0].o;
+      }
+      if (typeof updateHdr === 'function') updateHdr();
     }
     drawChart(true);
-  }catch(err){
-    if(err.name==='AbortError') return;
-    console.warn('loadStockKlines failed:',err);
-    if(sym===S.pair) _stockFallbackSim(sym);
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    console.warn('loadStockKlines (Finnhub) failed:', err);
+    if (sym === S.pair) _stockFallbackSim(sym);
   }
 }
 function _stockFallbackSim(sym){
@@ -622,9 +812,16 @@ const _SC={
   TQQQ:'#0064a4,#55aaff',SQQQ:'#cc0000,#ff5555',
 };
 const _LIGHT_SYMS=new Set(['NVDA','SHOP','MCD','CAT','GLD','SLV','SNAP','RIVN','DE','LCID']);
+
+// Strip exchange prefix (e.g. "LSE:SHEL" → "SHEL") for display.
+function _dispSym(sym){ return sym.includes(':') ? sym.split(':')[1] : sym; }
+// Exchange label for header (e.g. "LSE:SHEL" → "LSE")
+function _exchLabel(sym){ return sym.includes(':') ? sym.split(':')[0] : 'NYSE/NASDAQ'; }
+
 function _stockBadgeStyle(sym){
-  const g=_SC[sym];
-  if(g){const[a,b]=g.split(',');return `background:linear-gradient(135deg,${a},${b});color:${_LIGHT_SYMS.has(sym)?'#000':'#fff'}`;}
+  const base=_dispSym(sym);
+  const g=_SC[base]||_SC[sym];
+  if(g){const[a,b]=g.split(',');return `background:linear-gradient(135deg,${a},${b});color:${_LIGHT_SYMS.has(base)?'#000':'#fff'}`;}
   let h=0;for(let i=0;i<sym.length;i++)h=(h*31+sym.charCodeAt(i))&0xffffffff;
   const hue=Math.abs(h)%360;
   return `background:linear-gradient(135deg,hsl(${hue},60%,25%),hsl(${(hue+30)%360},70%,45%));color:#fff`;
@@ -636,17 +833,22 @@ function selStock(sym){
   if(_stockKlineAbort) _stockKlineAbort.abort();
   stockMode=true; S.pair=sym;
   const pair=STOCK_PAIRS.find(p=>p.sym===sym); if(!pair) return;
+  const disp=_dispSym(sym);
+  const exch=_exchLabel(sym);
   const symEl=document.getElementById('hSym');
-  if(symEl) symEl.innerHTML=`${pair.name}<span class="sym-sep"> / USD</span><span class="sym-meta"> · ${currentTF} · NYSE/NASDAQ</span>`;
-  const unitEl=document.getElementById('aunit'); if(unitEl) unitEl.textContent=sym;
+  if(symEl) symEl.innerHTML=`${pair.name}<span class="sym-sep"> / USD</span><span class="sym-meta"> · ${currentTF} · ${exch}</span>`;
+  const unitEl=document.getElementById('aunit'); if(unitEl) unitEl.textContent=disp;
   const placeBtn=document.getElementById('placeBtn');
-  if(placeBtn) placeBtn.textContent=(S.side==='buy'?'BUY ':'SELL ')+sym;
+  if(placeBtn) placeBtn.textContent=(S.side==='buy'?'BUY ':'SELL ')+disp;
   candles=[]; _chartInitialised=false;
   if(typeof priceLine!=='undefined'&&priceLine&&candleSeries){try{candleSeries.removePriceLine(priceLine);}catch(_){}priceLine=null;}
   if(typeof _resetPriceLineCache==='function') _resetPriceLineCache();
   if(candleSeries){try{candleSeries.setData([]);}catch(_){}}
   if(typeof volumeSeries!=='undefined'&&volumeSeries){try{volumeSeries.setData([]);}catch(_){}}
   if(typeof maLines!=='undefined') maLines.forEach(ma=>{if(ma.series){try{ma.series.setData([]);}catch(_){}}});
+  // Fetch live quote immediately so the header shows a real price right away,
+  // rather than waiting for candle data or the slow batch scan to complete.
+  _fetchQuoteNow(sym);
   loadStockKlines(sym,currentTF);
   // Update active highlight in-place — don't rebuild the whole list (would wipe loaded prices)
   const _sl=document.getElementById('stockPairList');
@@ -672,12 +874,13 @@ function renderStockPairs(filter=''){
     html+=`<div class="sb-section-lbl">${sector}</div>`;
     pairs.forEach(p=>{
       const pr=prices[p.sym]||p.p||0, ch=p.ch||0, cls=ch>=0?'up':'dn';
-      const lbl=p.sym.length>5?p.sym.slice(0,5):p.sym;
+      const disp=_dispSym(p.sym);
+      const lbl=disp.length>5?disp.slice(0,5):disp;
       html+=`<div class="pi ${p.sym===S.pair&&stockMode?'on':''}" data-stock-sym="${p.sym}" onclick="selStock('${p.sym}')">
         <div class="ci">
           <div class="stock-badge" style="${_stockBadgeStyle(p.sym)}">${lbl}</div>
           <div style="min-width:0">
-            <div class="p-base">${p.sym}</div>
+            <div class="p-base">${disp}</div>
             <div class="p-quote" style="max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px">${p.name}</div>
           </div>
         </div>
@@ -727,4 +930,4 @@ window.genCandles=function(){
   else if(typeof _stockOrigGenCandles==='function') _stockOrigGenCandles();
 };
 
-setInterval(()=>{if(stockMode&&_quotesLoaded) loadStockQuotes();},120000);
+setInterval(()=>{if(stockMode&&_quotesLoaded) loadStockQuotes();},30000);

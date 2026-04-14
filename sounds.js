@@ -5,6 +5,7 @@
 // ── Audio context (lazy init on first user interaction) ───────────────
 let _audioCtx     = null;
 let _soundEnabled = JSON.parse(localStorage.getItem('apex_sound') ?? 'true');
+let _masterGain   = parseFloat(localStorage.getItem('apex_volume') ?? '0.5');
 
 function _getCtx() {
   if (!_soundEnabled) return null;
@@ -15,15 +16,24 @@ function _getCtx() {
   return _audioCtx;
 }
 
-// ── Master volume (0–1, persisted) ───────────────────────────────────
-let _masterGain = parseFloat(localStorage.getItem('apex_volume') ?? '0.5');
-
 function _masterGainNode(ctx) {
   const g = ctx.createGain();
   g.gain.value = _masterGain;
   g.connect(ctx.destination);
   return g;
 }
+
+// ── Public setters — called by the Settings panel ─────────────────────
+function setSoundEnabled(val) {
+  _soundEnabled = !!val;
+  localStorage.setItem('apex_sound', JSON.stringify(_soundEnabled));
+}
+function setSoundVolume(val) {
+  _masterGain = Math.max(0, Math.min(1, val));
+  localStorage.setItem('apex_volume', String(_masterGain));
+}
+function getSoundEnabled() { return _soundEnabled; }
+function getSoundVolume()  { return _masterGain; }
 
 // ── Core oscillator helper ────────────────────────────────────────────
 function _osc(ctx, dest, type, freq, gainVal, startTime) {
@@ -43,13 +53,12 @@ function soundBuy() {
   const ctx = _getCtx(); if (!ctx) return;
   const master = _masterGainNode(ctx);
   const t = ctx.currentTime;
-  [523.25, 659.25, 783.99].forEach((freq, i) => {   // C5, E5, G5
+  [523.25, 659.25, 783.99].forEach((freq, i) => {
     const { osc, gain } = _osc(ctx, master, 'sine', freq, 0.28, t + i * 0.04);
     gain.gain.setValueAtTime(0.28, t + i * 0.04);
     gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.04 + 0.55);
     osc.stop(t + i * 0.04 + 0.56);
   });
-  // Soft click transient
   const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.02), ctx.sampleRate);
   const data = buf.getChannelData(0);
   for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
@@ -64,7 +73,7 @@ function soundSell() {
   const ctx = _getCtx(); if (!ctx) return;
   const master = _masterGainNode(ctx);
   const t = ctx.currentTime;
-  [783.99, 622.25, 493.88].forEach((freq, i) => {   // G5, Eb5, B4
+  [783.99, 622.25, 493.88].forEach((freq, i) => {
     const { osc, gain } = _osc(ctx, master, 'sine', freq, 0.25, t + i * 0.05);
     gain.gain.setValueAtTime(0.25, t + i * 0.05);
     gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.05 + 0.5);
@@ -77,7 +86,7 @@ function soundProfit() {
   const ctx = _getCtx(); if (!ctx) return;
   const master = _masterGainNode(ctx);
   const t = ctx.currentTime;
-  [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {   // C5→E5→G5→C6
+  [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
     const { osc, gain } = _osc(ctx, master, 'sine', freq, 0.22, t + i * 0.07);
     gain.gain.setValueAtTime(0.22, t + i * 0.07);
     gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.45);
@@ -90,7 +99,7 @@ function soundLoss() {
   const ctx = _getCtx(); if (!ctx) return;
   const master = _masterGainNode(ctx);
   const t = ctx.currentTime;
-  [329.63, 277.18, 246.94].forEach((freq, i) => {   // E4, Db4, B3
+  [329.63, 277.18, 246.94].forEach((freq, i) => {
     const { osc, gain } = _osc(ctx, master, 'triangle', freq, 0.20, t + i * 0.09);
     gain.gain.setValueAtTime(0.20, t + i * 0.09);
     gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.09 + 0.6);
@@ -124,10 +133,6 @@ function soundError() {
   });
 }
 
-
-
-
-
 // ── RESET ACCOUNT — descending 8-bit game-over ───────────────────────
 function soundReset() {
   const ctx = _getCtx(); if (!ctx) return;
@@ -141,64 +146,10 @@ function soundReset() {
   });
 }
 
-// ── SOUND TOGGLE UI ───────────────────────────────────────────────────
-function _injectSoundToggle() {
-  const navR = document.querySelector('.nav-r');
-  if (!navR || document.getElementById('soundToggleBtn')) return;
-
-  const btn = document.createElement('button');
-  btn.id = 'soundToggleBtn';
-  btn.className = 'nbtn';
-  btn.title = _soundEnabled ? 'Sound on — click to mute' : 'Sound off — click to enable';
-  btn.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:13px;padding:5px 9px;min-width:32px;justify-content:center';
-  btn.textContent = _soundEnabled ? '🔊' : '🔇';
-
-  btn.onclick = () => {
-    _soundEnabled = !_soundEnabled;
-    localStorage.setItem('apex_sound', JSON.stringify(_soundEnabled));
-    btn.textContent = _soundEnabled ? '🔊' : '🔇';
-    btn.title = _soundEnabled ? 'Sound on — click to mute' : 'Sound off — click to enable';
-    if (_soundEnabled) soundInfo();
-  };
-
-  // Volume slider
-  const vol = document.createElement('input');
-  vol.type  = 'range';
-  vol.min   = '0';
-  vol.max   = '1';
-  vol.step  = '0.05';
-  vol.value = String(_masterGain);
-  vol.title = 'Volume';
-  vol.style.cssText = [
-    'width:58px', 'height:3px', 'accent-color:var(--cyan)',
-    'cursor:pointer', 'border:none', 'background:transparent',
-    'vertical-align:middle', 'margin-left:2px',
-  ].join(';');
-  vol.oninput = e => {
-    _masterGain = parseFloat(e.target.value);
-    localStorage.setItem('apex_volume', String(_masterGain));
-    if (_masterGain > 0 && _soundEnabled) soundInfo();
-  };
-
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'display:flex;align-items:center;gap:0;';
-  wrap.appendChild(btn);
-  wrap.appendChild(vol);
-
-  // Insert before the first .nbtn (⚙ Settings)
-  const firstNbtn = navR.querySelector('.nbtn');
-  navR.insertBefore(wrap, firstNbtn);
-}
-
 // ── HOOK INTO EXISTING FUNCTIONS ──────────────────────────────────────
-// _suppressToastSound prevents double-playing: when placeOrder or closePOS
-// play their own richer directional sounds, the toast's generic ping is skipped.
-
 let _suppressToastSound = false;
 
 function _hookSounds() {
-
-  // ── toast() ───────────────────────────────────────────────────────
   const _origToast = window.toast;
   window.toast = function(msg, type = 'info') {
     _origToast.apply(this, arguments);
@@ -207,14 +158,12 @@ function _hookSounds() {
     else soundInfo();
   };
 
-  // ── placeOrder() ─────────────────────────────────────────────────
   const _origPlaceOrder = window.placeOrder;
   window.placeOrder = function() {
     const side = S.side;
     _suppressToastSound = true;
     _origPlaceOrder.apply(this, arguments);
     _suppressToastSound = false;
-    // Success is detected by the amount input being cleared by placeOrder
     const wasCleared = (document.getElementById('amt')?.value === '');
     if (wasCleared) {
       if (side === 'buy') soundBuy();
@@ -222,7 +171,6 @@ function _hookSounds() {
     }
   };
 
-  // ── closePOS() ───────────────────────────────────────────────────
   const _origClosePOS = window.closePOS;
   window.closePOS = function(id) {
     const pos = S.positions.find(p => p.id === id);
@@ -237,7 +185,6 @@ function _hookSounds() {
     }
   };
 
-  // ── resetAcc() ───────────────────────────────────────────────────
   const _origReset = window.resetAcc;
   window.resetAcc = function() {
     const _origConfirm = window.confirm;
@@ -252,16 +199,11 @@ function _hookSounds() {
     _suppressToastSound = false;
     if (confirmed) soundReset();
   };
-
-
-
-
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { _injectSoundToggle(); _hookSounds(); });
+  document.addEventListener('DOMContentLoaded', _hookSounds);
 } else {
-  _injectSoundToggle();
   _hookSounds();
 }

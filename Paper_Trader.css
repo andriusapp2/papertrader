@@ -44,7 +44,7 @@ html,body{height:100%;background:var(--bg-deep);color:var(--t1);font-family:var(
 nav{grid-column:1/-1;display:flex;align-items:center;gap:0;
   height:52px;border-bottom:1px solid var(--border-dim);
   background:rgba(3,5,13,.96);backdrop-filter:blur(20px);
-  padding:0 18px;z-index:50}
+  padding:0 18px;z-index:50;overflow:visible}
 .logo{display:flex;align-items:center;gap:10px;padding-right:20px;
   border-right:1px solid var(--border-dim);margin-right:18px}
 .logo-glyph{width:30px;height:30px;border-radius:8px;
@@ -60,7 +60,7 @@ nav{grid-column:1/-1;display:flex;align-items:center;gap:0;
   transition:all .18s;font-family:var(--sans)}
 .nl:hover{color:var(--t1);background:var(--bg-hover)}
 .nl.on{color:var(--cyan);background:var(--cyan-dim);border-color:rgba(0,212,255,.14)}
-.nav-r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.nav-r{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
 .pill{display:flex;align-items:center;gap:8px;padding:5px 13px;
   background:var(--bg-card);border:1px solid var(--border-mid);
   border-radius:6px;font-size:11px}
@@ -438,6 +438,11 @@ tbody tr:hover{background:var(--bg-hover)}
   .mob-bal-pill .lbl { display: none; }
   .mob-bal-pill .val { font-size: 12px; font-weight: 700; }
 
+  /* Auth elements — always visible on mobile */
+  #apex-user-pill { display: flex !important; gap: 5px; padding: 4px 8px; }
+  #apex-user-pill span:first-child { display: none; } /* hide the ▸ arrow on mobile */
+  #apex-logout-btn { display: inline-flex !important; padding: 4px 8px; font-size: 10px; }
+
   /* Hide settings/reset in nav on mobile — moved to side sheet */
   .nbtn { display: none; }
 
@@ -698,3 +703,5 @@ html.is-mobile .app {
   grid-template-rows: 48px 1fr !important;
   grid-template-columns: 1fr !important;
 }
+html.is-mobile #apex-user-pill { display: flex !important; }
+html.is-mobile #apex-logout-btn { display: inline-flex !important; }

@@ -61,6 +61,10 @@ function placeOrder() {
   }
   document.getElementById('amt').value = ''; document.getElementById('psl').value = 0; calcT();
   renderPos(); renderHist(); updateHdr();
+  saveSettings();
+  
+  // ✅ CRITICAL FIX: Switch to Trade History tab to show the new trade immediately
+  _switchToHistoryTab();
 }
 
 // ── POSITIONS ──
@@ -82,6 +86,10 @@ function closePOS(id) {
   S.positions = S.positions.filter(p => p.id !== id);
   toast(`Closed: ${pnl >= 0 ? '+' : ''}${fu(pnl)} PnL`, pnl >= 0 ? 'success' : 'error');
   renderPos(); renderHist(); updateHdr();
+  saveSettings();
+  
+  // ✅ CRITICAL FIX: Switch to Trade History tab to show the closed trade immediately
+  _switchToHistoryTab();
 }
 
 // ── TRADE HISTORY ──
@@ -91,4 +99,18 @@ function renderHist() {
   tb.innerHTML = S.history.slice(0, 60).map(h =>
     `<tr><td class="dim">${h.time}</td><td style="font-weight:600">${h.pair}</td><td><span class="chip ${h.side === 'BUY' ? 'buy' : 'sell'}">${h.side}</span></td><td>$${fp(h.price)}</td><td>${h.amt.toFixed(5)}</td><td>${fu(h.total)}</td><td class="dim">${fu(h.fee)}</td><td class="${h.pnl == null ? 'dim' : h.pnl >= 0 ? 'up' : 'dn'}">${h.pnl == null ? '—' : (h.pnl >= 0 ? '+' : '') + fu(h.pnl)}</td></tr>`
   ).join('');
+}
+
+// ── HELPER: Switch to History Tab ──────────────────────────────────────
+function _switchToHistoryTab() {
+  // Remove 'on' class from all bottom tabs and panels
+  document.querySelectorAll('.bt').forEach(t => t.classList.remove('on'));
+  document.querySelectorAll('.bc').forEach(c => c.classList.remove('on'));
+  
+  // Add 'on' class to Trade History tab and panel
+  const histBtn = Array.from(document.querySelectorAll('.bt')).find(btn => btn.textContent.includes('Trade History'));
+  const histPanel = document.getElementById('histTab');
+  
+  if (histBtn) histBtn.classList.add('on');
+  if (histPanel) histPanel.classList.add('on');
 }

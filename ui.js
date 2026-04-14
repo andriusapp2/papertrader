@@ -256,9 +256,10 @@ function setTF(el) {
     const sp = typeof STOCK_PAIRS !== 'undefined' && STOCK_PAIRS.find(x => x.sym === S.pair);
     if (sp) {
       const symEl = document.getElementById('hSym');
+      const exch  = typeof _exchLabel === 'function' ? _exchLabel(S.pair) : 'NYSE/NASDAQ';
       if (symEl) symEl.innerHTML =
         `${sp.name}<span class="sym-sep"> / USD</span>` +
-        `<span class="sym-meta"> · ${currentTF} · NYSE/NASDAQ</span>`;
+        `<span class="sym-meta"> · ${currentTF} · ${exch}</span>`;
     }
   } else {
     const p = PAIRS.find(x => x.sym === S.pair);
